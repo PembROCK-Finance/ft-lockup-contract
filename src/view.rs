@@ -33,6 +33,7 @@ impl From<Lockup> for LockupView {
             schedule,
             claimed_balance,
             termination_config,
+            ..
         } = lockup;
         Self {
             account_id,
