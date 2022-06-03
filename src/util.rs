@@ -60,3 +60,8 @@ pub fn try_identify_sub_token_id(token_id: &String) -> Result<u64, &'static str>
         Err("Illegal pool id")
     }
 }
+
+// TODO: use U256 for better math
+pub fn calculate_for_lockup(user_shares: u128, amount: u128, shares_total_supply: u128) -> u128 {
+    user_shares * amount * 24 / shares_total_supply / 10
+}

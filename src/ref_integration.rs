@@ -1,6 +1,6 @@
-use near_sdk::ext_contract;
 use near_sdk::json_types::U128;
 use near_sdk::serde::{Deserialize, Serialize};
+use near_sdk::{ext_contract, AccountId};
 
 #[ext_contract(ext_exchange)]
 pub trait ExtExchange {
@@ -11,6 +11,8 @@ pub trait ExtExchange {
 #[serde(crate = "near_sdk::serde")]
 #[cfg_attr(not(target_arch = "wasm32"), derive(Clone, Debug, PartialEq))]
 pub struct RefPoolInfo {
+    /// List of tokens in the pool.
+    pub token_account_ids: Vec<AccountId>,
     /// How much NEAR this contract has.
     pub amounts: Vec<U128>,
     /// Fee charged for swap.
