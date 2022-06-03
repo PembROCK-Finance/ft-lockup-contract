@@ -140,18 +140,40 @@ impl Contract {
         }
     }
 
+    #[payable]
     pub fn terminate(
         &mut self,
         lockup_index: LockupIndex,
         hashed_schedule: Option<Schedule>,
+        termination_timestamp: Option<TimestampSec>,
     ) -> PromiseOrValue<WrappedBalance> {
+        assert_one_yocto();
         let account_id = env::predecessor_account_id();
         let mut lockup = self
             .lockups
             .get(lockup_index as _)
             .expect("Lockup not found");
-        let unvested_balance = lockup.terminate(&account_id, hashed_schedule);
+        let current_timestamp = current_timestamp_sec();
+        let termination_timestamp = termination_timestamp.unwrap_or(current_timestamp);
+        assert!(
+            termination_timestamp >= current_timestamp,
+            "expected termination_timestamp >= now",
+        );
+        let unvested_balance =
+            lockup.terminate(&account_id, hashed_schedule, termination_timestamp);
         self.lockups.replace(lockup_index as _, &lockup);
+
+        // no need to store empty lockup
+        if lockup.schedule.total_balance() == 0 {
+            let lockup_account_id: AccountId = lockup.account_id.into();
+            let mut indices = self
+                .account_lockups
+                .get(&lockup_account_id)
+                .unwrap_or_default();
+            indices.remove(&lockup_index);
+            self.internal_save_account_lockups(&lockup_account_id, indices);
+        }
+
         if unvested_balance > 0 {
             ext_fungible_token::ft_transfer(
                 account_id.clone(),
