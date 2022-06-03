@@ -30,10 +30,9 @@ impl FungibleTokenReceiver for Contract {
                 lockup.assert_new_valid(amount);
                 let index = self.internal_add_lockup(&lockup);
                 log!(
-                    "Created new lockup for {} with index {} with amount {}",
+                    "Created new lockup for {} with index {}",
                     lockup.account_id.as_ref(),
                     index,
-                    amount
                 );
                 PromiseOrValue::Value(0.into())
             }
