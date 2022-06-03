@@ -886,7 +886,7 @@ dependencies = [
  "fixed-hash",
  "impl-rlp",
  "impl-serde",
- "primitive-types",
+ "primitive-types 0.9.0",
  "uint",
 ]
 
@@ -943,6 +943,7 @@ dependencies = [
  "near-contract-standards",
  "near-sdk",
  "near-sdk-sim",
+ "primitive-types 0.11.1",
  "uint",
 ]
 
@@ -1525,7 +1526,7 @@ dependencies = [
  "near-rpc-error-macro",
  "near-vm-errors",
  "num-rational",
- "primitive-types",
+ "primitive-types 0.9.0",
  "rand 0.7.3",
  "reed-solomon-erasure",
  "regex",
@@ -1997,6 +1998,16 @@ dependencies = [
  "impl-codec",
  "impl-rlp",
  "impl-serde",
+ "uint",
+]
+
+[[package]]
+name = "primitive-types"
+version = "0.11.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e28720988bff275df1f51b171e1b2a18c30d194c4d2b61defdacecd625a5d94a"
+dependencies = [
+ "fixed-hash",
  "uint",
 ]
 

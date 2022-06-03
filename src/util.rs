@@ -1,5 +1,6 @@
 use crate::*;
 use near_sdk::env;
+use primitive_types::U256;
 
 pub(crate) fn nano_to_sec(timestamp: Timestamp) -> TimestampSec {
     (timestamp / 10u64.pow(9)) as _
@@ -45,7 +46,10 @@ pub fn try_identify_sub_token_id(token_id: &String) -> Result<u64, &'static str>
 
 // TODO: use U256 for better math
 pub fn calculate_for_lockup(user_shares: u128, amount: u128, shares_total_supply: u128) -> u128 {
-    user_shares * amount * 2 / shares_total_supply * 12 / 10
+    (U256::from(user_shares) * U256::from(amount) * U256::from(2_u64) * U256::from(12_u64)
+        / U256::from(shares_total_supply)
+        / U256::from(10_u64))
+    .as_u128()
 }
 
 pub fn try_calculate_gas(
