@@ -27,6 +27,9 @@ pub struct Lockup {
     pub claimed_balance: Balance,
     /// An optional configuration that allows vesting/lockup termination.
     pub termination_config: Option<TerminationConfig>,
+
+    // TODO: better name
+    pub fn flag: Option<bool>,
 }
 
 impl Lockup {
