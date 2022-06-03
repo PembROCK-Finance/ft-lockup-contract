@@ -62,7 +62,7 @@ impl MFTTokenReceiver for Contract {
         token_id: String,
         sender_id: AccountId,
         amount: U128,
-        _msg: String,
+        msg: String,
     ) -> PromiseOrValue<U128> {
         // self.get((env::predecessor_account_id(), token_id)).is_some()
         // get_pool
