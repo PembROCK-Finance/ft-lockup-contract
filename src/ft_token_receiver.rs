@@ -67,6 +67,12 @@ impl MFTTokenReceiver for Contract {
         // self.get((env::predecessor_account_id(), token_id)).is_some()
         // get_pool
         let pool_id = try_identify_sub_token_id(&token_id).unwrap_or_else(|err| panic!("{}", err));
+
+        let gas_reserve = 10_000_000_000_000;
+        let callback_gas =
+            try_calculate_gas(GAS_FOR_GET_REF_POOL_INFO, 10_000_000_000_000, gas_reserve)
+                .unwrap_or_else(|error| panic!("{}", error));
+
         ext_exchange::get_pool(
             pool_id,
             &env::predecessor_account_id(),
@@ -79,7 +85,7 @@ impl MFTTokenReceiver for Contract {
             amount,
             &env::current_account_id(),
             NO_DEPOSIT,
-            env::prepaid_gas() - env::used_gas(),
+            callback_gas,
         ))
         .into()
     }

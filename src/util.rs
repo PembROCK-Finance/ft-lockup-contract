@@ -65,3 +65,23 @@ pub fn try_identify_sub_token_id(token_id: &String) -> Result<u64, &'static str>
 pub fn calculate_for_lockup(user_shares: u128, amount: u128, shares_total_supply: u128) -> u128 {
     user_shares * amount * 2 / shares_total_supply * 12 / 10
 }
+
+pub fn try_calculate_gas(
+    gas_for_cross_call: Gas,
+    minimum_gas_for_callback: Gas,
+    gas_reserve: Gas,
+) -> Result<Gas, &'static str> {
+    #[cfg(feature = "debug")]
+    log!(
+        "Gas: prepaid - {:?}, used - {:?}, for cross-call - {:?}, minimum for callback - {:?}, gas reserve - {:?}",
+        env::prepaid_gas(),
+        env::used_gas(),
+        gas_for_cross_call,
+        minimum_gas_for_callback,
+        gas_reserve,
+    );
+    match env::prepaid_gas().checked_sub(env::used_gas() + gas_reserve + gas_for_cross_call) {
+        Some(gas_left) if gas_left >= minimum_gas_for_callback => Ok(gas_left),
+        _ => Err("Not enough gas"),
+    }
+}
