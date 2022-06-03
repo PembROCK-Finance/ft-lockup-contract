@@ -2,7 +2,7 @@ use near_contract_standards::fungible_token::core_impl::ext_fungible_token;
 use near_contract_standards::fungible_token::receiver::FungibleTokenReceiver;
 use near_sdk::borsh::maybestd::collections::HashSet;
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::collections::{LookupMap, UnorderedSet, Vector};
+use near_sdk::collections::{LookupMap, LookupSet, UnorderedSet, Vector};
 use near_sdk::json_types::{Base58CryptoHash, ValidAccountId, WrappedBalance, U128};
 use near_sdk::serde::{Deserialize, Serialize};
 use near_sdk::{
@@ -70,7 +70,7 @@ pub struct Contract {
     pub deposit_whitelist: UnorderedSet<AccountId>,
 
     pub for_incent: Balance,
-    pub whitelisted_tokens: LookupMap<u64, AccountId>,
+    pub whitelisted_tokens: LookupSet<(AccountId, u64)>,
 }
 
 #[derive(BorshStorageKey, BorshSerialize)]
@@ -93,7 +93,7 @@ impl Contract {
             token_account_id: token_account_id.into(),
             deposit_whitelist: deposit_whitelist_set,
             for_incent: 0,
-            whitelisted_tokens: LookupMap::new(StorageKey::WhitelistedTokens),
+            whitelisted_tokens: LookupSet::new(StorageKey::WhitelistedTokens),
         }
     }
 

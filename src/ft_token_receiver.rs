@@ -1,6 +1,6 @@
 use crate::ref_integration::{ext_exchange, RefPoolInfo};
 use crate::*;
-use near_sdk::{log, near_bindgen, AccountId, Gas, PromiseOrValue};
+use near_sdk::{near_bindgen, AccountId, Gas, PromiseOrValue};
 use std::convert::TryFrom;
 
 #[near_bindgen]
@@ -19,11 +19,10 @@ impl FungibleTokenReceiver for Contract {
         self.assert_deposit_whitelist(sender_id.as_ref());
         let lockup: Lockup = serde_json::from_str(&msg).expect("Expected Lockup as msg");
 
-        match lockup.for_incent {
+        match lockup.flag {
             Some(true) => {
                 self.for_incent += amount.0;
-                log!("Write amount for incent");
-                PromiseOrValue::Value(0.into())
+                PromiseOrValue::Value(0.into()) // is this right??
             }
             _ => {
                 let amount = amount.into();
@@ -68,7 +67,8 @@ impl MFTTokenReceiver for Contract {
         // get_pool
         let pool_id = try_identify_sub_token_id(&token_id).unwrap_or_else(|err| panic!("{}", err));
         assert!(
-            self.whitelisted_tokens.contains_key(&pool_id),
+            self.whitelisted_tokens
+                .contains(&(env::predecessor_account_id(), pool_id)),
             "Contract or token not whitelisted"
         );
 
@@ -139,14 +139,11 @@ impl Contract {
             ]),
             claimed_balance: 0,
             termination_config: None,
-            for_incent: None,
+            flag: None,
         };
         let index = self.internal_add_lockup(&lockup);
 
-        self.for_incent = self
-            .for_incent
-            .checked_sub(amount_for_lockup)
-            .unwrap_or_else(|| panic!("For incent is too low"));
+        self.for_incent -= amount_for_lockup; // TODO checked_sub
 
         log!(
             "Created new lockup for {} with index {}",
