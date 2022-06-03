@@ -24,4 +24,16 @@ impl Contract {
             self.whitelisted_tokens.remove(value);
         });
     }
+
+    pub fn set_state(&mut self, enabled: bool) {
+        assert!(
+            self.deposit_whitelist
+                .contains(&env::predecessor_account_id()),
+            "Not allowed"
+        );
+
+        self.enabled = enabled;
+
+        log!("Contract {}", if enabled { "enabled" } else { "disabled" });
+    }
 }
