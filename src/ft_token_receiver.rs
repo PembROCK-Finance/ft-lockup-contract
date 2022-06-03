@@ -80,7 +80,6 @@ impl MFTTokenReceiver for Contract {
             GAS_FOR_GET_REF_POOL_INFO,
         )
         .then(ext_on_mft::on_mft_callback(
-            env::predecessor_account_id(),
             sender_id,
             amount,
             &env::current_account_id(),
@@ -95,7 +94,6 @@ impl MFTTokenReceiver for Contract {
 pub trait OnMftTransfer {
     fn on_mft_callback(
         &mut self,
-        token_account_id: AccountId,
         sender_id: AccountId,
         user_shares: U128,
         #[callback] pool_info: RefPoolInfo,
@@ -106,7 +104,6 @@ pub trait OnMftTransfer {
 impl Contract {
     pub fn on_mft_callback(
         &mut self,
-        token_account_id: AccountId,
         sender_id: AccountId,
         user_shares: U128,
         #[callback] pool_info: RefPoolInfo,
@@ -114,8 +111,8 @@ impl Contract {
         let amount_index = pool_info
             .token_account_ids
             .iter()
-            .position(|r| r == &token_account_id)
-            .unwrap_or_else(|| panic!("No such TokenId in PoolInfo"));
+            .position(|r| r == &String::from("token.pembrock.testnet"))
+            .unwrap_or_else(|| panic!("No token.pembrock.near in PoolInfo"));
         let amount = pool_info.amounts[amount_index].0;
 
         let amount_for_lockup =
