@@ -1,6 +1,6 @@
 use crate::ref_integration::{ext_exchange, RefPoolInfo};
 use crate::*;
-use near_sdk::{near_bindgen, AccountId, Gas, PromiseOrValue};
+use near_sdk::{log, near_bindgen, AccountId, Gas, PromiseOrValue};
 use std::convert::TryFrom;
 
 #[near_bindgen]
@@ -19,10 +19,11 @@ impl FungibleTokenReceiver for Contract {
         self.assert_deposit_whitelist(sender_id.as_ref());
         let lockup: Lockup = serde_json::from_str(&msg).expect("Expected Lockup as msg");
 
-        match lockup.flag {
+        match lockup.for_incent {
             Some(true) => {
                 self.for_incent += amount.0;
-                PromiseOrValue::Value(0.into()) // is this right??
+                log!("Write amount for incent");
+                PromiseOrValue::Value(0.into())
             }
             _ => {
                 let amount = amount.into();
@@ -139,11 +140,14 @@ impl Contract {
             ]),
             claimed_balance: 0,
             termination_config: None,
-            flag: None,
+            for_incent: None,
         };
         let index = self.internal_add_lockup(&lockup);
 
-        self.for_incent -= amount_for_lockup; // TODO checked_sub
+        self.for_incent = self
+            .for_incent
+            .checked_sub(amount_for_lockup)
+            .unwrap_or_else(|| panic!("For incent is too low"));
 
         log!(
             "Created new lockup for {} with index {}",
