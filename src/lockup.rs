@@ -29,7 +29,7 @@ pub struct Lockup {
     pub termination_config: Option<TerminationConfig>,
 
     // TODO: better name
-    pub flag: Option<bool>,
+    pub for_incent: Option<bool>,
 }
 
 impl Lockup {
@@ -39,7 +39,7 @@ impl Lockup {
             schedule: Schedule::new_unlocked(total_balance),
             claimed_balance: 0,
             termination_config: None,
-            flag: None,
+            for_incent: None,
         }
     }
 
