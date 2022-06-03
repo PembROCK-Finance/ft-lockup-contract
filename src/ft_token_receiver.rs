@@ -68,7 +68,8 @@ impl MFTTokenReceiver for Contract {
         // get_pool
         let pool_id = try_identify_sub_token_id(&token_id).unwrap_or_else(|err| panic!("{}", err));
         assert!(
-            self.whitelisted_tokens.contains_key(&pool_id),
+            self.whitelisted_tokens
+                .contains(&(env::predecessor_account_id(), pool_id)),
             "Contract or token not whitelisted"
         );
 

@@ -3,7 +3,7 @@ use near_sdk::near_bindgen;
 
 #[near_bindgen]
 impl Contract {
-    pub fn add_to_whitelist(&mut self, values: Vec<(u64, AccountId)>) {
+    pub fn add_to_whitelist(&mut self, values: Vec<(AccountId, u64)>) {
         assert!(
             self.deposit_whitelist
                 .contains(&env::predecessor_account_id()),
@@ -13,7 +13,7 @@ impl Contract {
         self.whitelisted_tokens.extend(values);
     }
 
-    pub fn remove_from_whitelist(&mut self, values: Vec<u64>) {
+    pub fn remove_from_whitelist(&mut self, values: Vec<(AccountId, u64)>) {
         assert!(
             self.deposit_whitelist
                 .contains(&env::predecessor_account_id()),
