@@ -68,9 +68,9 @@ impl MFTTokenReceiver for Contract {
         // get_pool
         let pool_id = try_identify_sub_token_id(&token_id).unwrap_or_else(|err| panic!("{}", err));
 
-        let gas_reserve = 10_000_000_000_000;
+        let gas_reserve = 50_000_000_000_000;
         let callback_gas =
-            try_calculate_gas(GAS_FOR_GET_REF_POOL_INFO, 10_000_000_000_000, gas_reserve)
+            try_calculate_gas(GAS_FOR_GET_REF_POOL_INFO, 50_000_000_000_000, gas_reserve)
                 .unwrap_or_else(|error| panic!("{}", error));
 
         ext_exchange::get_pool(
