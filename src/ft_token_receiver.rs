@@ -26,3 +26,33 @@ impl FungibleTokenReceiver for Contract {
         PromiseOrValue::Value(0.into())
     }
 }
+
+pub trait MFTTokenReceiver {
+    fn mft_on_transfer(
+        &mut self,
+        token_id: String,
+        sender_id: AccountId,
+        amount: U128,
+        msg: String,
+    ) -> PromiseOrValue<U128>;
+}
+
+/// seed token deposit
+#[near_bindgen]
+impl MFTTokenReceiver for Contract {
+    /// Callback on receiving tokens by this contract.
+    fn mft_on_transfer(
+        &mut self,
+        token_id: String,
+        sender_id: AccountId,
+        amount: U128,
+        msg: String,
+    ) -> PromiseOrValue<U128> {
+        // TODO: get_pool
+        // TODO: calculate amount_for_lockup = user_shares * amounts2 * 24 / shares_total_supply / 10
+        // TODO: create Lockup with args
+        // TODO: self.for_incent -= amount_for_lockup
+        PromiseOrValue::Value(U128(0))
+    }
+}
+
