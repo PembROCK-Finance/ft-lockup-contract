@@ -1,4 +1,7 @@
 use crate::*;
+use crate::ref_integration::{ext_exchange, RefPoolInfo};
+use near_sdk::{near_bindgen, PromiseOrValue, Gas, AccountId};
+
 
 #[near_bindgen]
 impl FungibleTokenReceiver for Contract {
@@ -46,6 +49,10 @@ pub trait MFTTokenReceiver {
     ) -> PromiseOrValue<U128>;
 }
 
+// TODO: move
+pub const GAS_FOR_GET_REF_POOL_INFO: Gas = 10_000_000_000_000;
+pub const NO_DEPOSIT: Balance = 0;
+
 /// seed token deposit
 #[near_bindgen]
 impl MFTTokenReceiver for Contract {
@@ -57,11 +64,41 @@ impl MFTTokenReceiver for Contract {
         amount: U128,
         msg: String,
     ) -> PromiseOrValue<U128> {
-        // TODO: get_pool
-        // TODO: calculate amount_for_lockup = user_shares * amounts2 * 24 / shares_total_supply / 10
-        // TODO: create Lockup with args
-        // TODO: self.for_incent -= amount_for_lockup
-        PromiseOrValue::Value(U128(0))
+        // get_pool
+        let pool_id = try_identify_sub_token_id(&token_id)
+            .unwrap_or_else(|err| panic!("{}", err));
+        ext_exchange::get_pool(
+            pool_id,
+            &env::predecessor_account_id,
+            NO_DEPOSIT,
+            GAS_FOR_GET_REF_POOL_INFO,
+        )
+        .then(
+            ext_on_mft::on_mft_callback(
+                &env::current_account_id(),
+                NO_DEPOSIT,
+                env::prepaid_gas() - env::used_gas(),
+            )
+            ).into()
     }
 }
 
+#[ext_contract(ext_on_mft)]
+pub trait OnMftTransfer {
+    fn on_mft_callback(&mut self) -> PromiseOrValue<U128>;
+}
+
+#[near_bindgen]
+impl Contract {
+    pub fn on_mft_callback(&mut self) -> PromiseOrValue<U128> {
+        match get_promise_result::<RefPoolInfo>() {
+            Ok(pool_info) => {
+                // TODO: calculate amount_for_lockup = user_shares * amounts2 * 24 / shares_total_supply / 10
+                // TODO: create Lockup with args
+                // TODO: self.for_incent -= amount_for_lockup
+                PromiseOrValue::Value(U128(0))
+            }
+            Err(error) => PromiseOrValue::Value(U128(0))
+        }    
+    }
+}
