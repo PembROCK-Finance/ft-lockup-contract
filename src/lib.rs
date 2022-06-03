@@ -66,6 +66,8 @@ pub struct Contract {
 
     /// Account IDs that can create new lockups.
     pub deposit_whitelist: UnorderedSet<AccountId>,
+
+    pub for_incent: Balance,
 }
 
 #[derive(BorshStorageKey, BorshSerialize)]
@@ -86,6 +88,7 @@ impl Contract {
             account_lockups: LookupMap::new(StorageKey::AccountLockups),
             token_account_id: token_account_id.into(),
             deposit_whitelist: deposit_whitelist_set,
+            for_incent: 0,
         }
     }
 

@@ -15,15 +15,24 @@ impl FungibleTokenReceiver for Contract {
         );
         self.assert_deposit_whitelist(sender_id.as_ref());
         let lockup: Lockup = serde_json::from_str(&msg).expect("Expected Lockup as msg");
-        let amount = amount.into();
-        lockup.assert_new_valid(amount);
-        let index = self.internal_add_lockup(&lockup);
-        log!(
-            "Created new lockup for {} with index {}",
-            lockup.account_id.as_ref(),
-            index
-        );
-        PromiseOrValue::Value(0.into())
+
+        match lockup.flag {
+            Some(true) => {
+                self.for_incent += amount.0;
+                PromiseOrValue::Value(0.into()) // is this right??
+            }
+            _ => {
+                let amount = amount.into();
+                lockup.assert_new_valid(amount);
+                let index = self.internal_add_lockup(&lockup);
+                log!(
+                    "Created new lockup for {} with index {}",
+                    lockup.account_id.as_ref(),
+                    index
+                );
+                PromiseOrValue::Value(0.into())
+            }
+        }
     }
 }
 
