@@ -92,6 +92,7 @@ pub trait OnMftTransfer {
         token_account_id: AccountId,
         sender_id: AccountId,
         user_shares: U128,
+        #[callback] pool_info: RefPoolInfo,
     ) -> PromiseOrValue<U128>;
 }
 
@@ -102,51 +103,47 @@ impl Contract {
         token_account_id: AccountId,
         sender_id: AccountId,
         user_shares: U128,
+        #[callback] pool_info: RefPoolInfo,
     ) -> PromiseOrValue<U128> {
-        match get_promise_result::<RefPoolInfo>() {
-            Ok(pool_info) => {
-                let amount_index = pool_info
-                    .token_account_ids
-                    .iter()
-                    .position(|r| r == &token_account_id)
-                    .unwrap_or_else(|| panic!("No such TokenId in PoolInfo"));
-                let amount = pool_info.amounts[amount_index].0;
+        let amount_index = pool_info
+            .token_account_ids
+            .iter()
+            .position(|r| r == &token_account_id)
+            .unwrap_or_else(|| panic!("No such TokenId in PoolInfo"));
+        let amount = pool_info.amounts[amount_index].0;
 
-                let amount_for_lockup =
-                    calculate_for_lockup(user_shares.0, amount, pool_info.shares_total_supply.0);
+        let amount_for_lockup =
+            calculate_for_lockup(user_shares.0, amount, pool_info.shares_total_supply.0);
 
-                let timestamp = (env::block_timestamp() / 1_000_000_000) as u32;
+        let timestamp = (env::block_timestamp() / 1_000_000_000) as u32;
 
-                let lockup = Lockup {
-                    account_id: ValidAccountId::try_from(sender_id)
-                        .unwrap_or_else(|_| panic!("Invalid AccountID")),
-                    schedule: Schedule(vec![
-                        Checkpoint {
-                            timestamp,
-                            balance: 0,
-                        },
-                        Checkpoint {
-                            timestamp: timestamp + 86400 * 180, // add half a year
-                            balance: amount_for_lockup,
-                        },
-                    ]),
-                    claimed_balance: 0,
-                    termination_config: None,
-                    flag: None,
-                };
-                let index = self.internal_add_lockup(&lockup);
+        let lockup = Lockup {
+            account_id: ValidAccountId::try_from(sender_id)
+                .unwrap_or_else(|_| panic!("Invalid AccountID")),
+            schedule: Schedule(vec![
+                Checkpoint {
+                    timestamp,
+                    balance: 0,
+                },
+                Checkpoint {
+                    timestamp: timestamp + 86400 * 180, // add half a year
+                    balance: amount_for_lockup,
+                },
+            ]),
+            claimed_balance: 0,
+            termination_config: None,
+            flag: None,
+        };
+        let index = self.internal_add_lockup(&lockup);
 
-                self.for_incent -= amount_for_lockup; // TODO checked_sub
+        self.for_incent -= amount_for_lockup; // TODO checked_sub
 
-                log!(
-                    "Created new lockup for {} with index {}",
-                    lockup.account_id.as_ref(),
-                    index
-                );
+        log!(
+            "Created new lockup for {} with index {}",
+            lockup.account_id.as_ref(),
+            index
+        );
 
-                PromiseOrValue::Value(U128(0))
-            }
-            Err(error) => panic!("{}", error),
-        }
+        PromiseOrValue::Value(U128(0))
     }
 }

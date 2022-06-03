@@ -1,6 +1,5 @@
 use crate::*;
-use near_sdk::serde::de::DeserializeOwned;
-use near_sdk::{env, PromiseResult};
+use near_sdk::env;
 
 pub(crate) fn nano_to_sec(timestamp: Timestamp) -> TimestampSec {
     (timestamp / 10u64.pow(9)) as _
@@ -28,23 +27,6 @@ pub mod u128_dec_format {
         String::deserialize(deserializer)?
             .parse()
             .map_err(de::Error::custom)
-    }
-}
-
-pub fn get_promise_result<T: DeserializeOwned>() -> Result<T, &'static str> {
-    if env::promise_results_count() == 1 {
-        panic!("Promise should have exactly one result");
-    }
-
-    match env::promise_result(0) {
-        PromiseResult::Successful(bytes) => match near_sdk::serde_json::from_slice(&bytes) {
-            Ok(value) => Ok(value),
-            Err(error) => panic!("Wrong value received: {:?}", error),
-        },
-        PromiseResult::Failed => Err("Promise failed"),
-        // Current version of protocol never return `NotReady`
-        // https://docs.rs/near-sdk/4.0.0-pre.8/near_sdk/enum.PromiseResult.html#variant.NotReady
-        PromiseResult::NotReady => panic!("Promise result not ready"),
     }
 }
 
