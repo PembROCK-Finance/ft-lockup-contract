@@ -64,9 +64,13 @@ impl MFTTokenReceiver for Contract {
         amount: U128,
         msg: String,
     ) -> PromiseOrValue<U128> {
-        // self.get((env::predecessor_account_id(), token_id)).is_some()
         // get_pool
         let pool_id = try_identify_sub_token_id(&token_id).unwrap_or_else(|err| panic!("{}", err));
+        assert!(
+            self.whitelisted_tokens
+                .contains(&(env::predecessor_account_id(), pool_id)),
+            "Contract or token not whitelisted"
+        );
 
         let gas_reserve = 50_000_000_000_000;
         let callback_gas =
