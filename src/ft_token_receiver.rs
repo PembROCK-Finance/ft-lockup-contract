@@ -1,7 +1,6 @@
-use crate::*;
 use crate::ref_integration::{ext_exchange, RefPoolInfo};
-use near_sdk::{near_bindgen, PromiseOrValue, Gas, AccountId};
-
+use crate::*;
+use near_sdk::{near_bindgen, AccountId, Gas, PromiseOrValue};
 
 #[near_bindgen]
 impl FungibleTokenReceiver for Contract {
@@ -65,21 +64,19 @@ impl MFTTokenReceiver for Contract {
         msg: String,
     ) -> PromiseOrValue<U128> {
         // get_pool
-        let pool_id = try_identify_sub_token_id(&token_id)
-            .unwrap_or_else(|err| panic!("{}", err));
+        let pool_id = try_identify_sub_token_id(&token_id).unwrap_or_else(|err| panic!("{}", err));
         ext_exchange::get_pool(
             pool_id,
             &env::predecessor_account_id,
             NO_DEPOSIT,
             GAS_FOR_GET_REF_POOL_INFO,
         )
-        .then(
-            ext_on_mft::on_mft_callback(
-                &env::current_account_id(),
-                NO_DEPOSIT,
-                env::prepaid_gas() - env::used_gas(),
-            )
-            ).into()
+        .then(ext_on_mft::on_mft_callback(
+            &env::current_account_id(),
+            NO_DEPOSIT,
+            env::prepaid_gas() - env::used_gas(),
+        ))
+        .into()
     }
 }
 
@@ -98,7 +95,7 @@ impl Contract {
                 // TODO: self.for_incent -= amount_for_lockup
                 PromiseOrValue::Value(U128(0))
             }
-            Err(error) => PromiseOrValue::Value(U128(0))
-        }    
+            Err(error) => PromiseOrValue::Value(U128(0)),
+        }
     }
 }
