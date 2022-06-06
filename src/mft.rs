@@ -7,7 +7,7 @@ pub const GAS_FOR_MFT_CALLBACK: Gas = 50_000_000_000_000;
 #[near_bindgen]
 impl Contract {
     #[payable]
-    pub fn mft_transfer(
+    pub fn proxy_mft_transfer(
         &mut self,
         token_id: String,
         receiver_id: ValidAccountId,
@@ -52,7 +52,7 @@ impl Contract {
     }
 
     #[payable]
-    pub fn mft_transfer_call(
+    pub fn proxy_mft_transfer_call(
         &mut self,
         token_id: String,
         receiver_id: ValidAccountId,
@@ -151,19 +151,25 @@ impl Contract {
         contract_id: AccountId,
         pool_id: u64,
     ) -> PromiseOrValue<U128> {
-        if is_promise_success() {
-            return PromiseOrValue::Value(U128(0));
+        let unused_amount = match get_promise_result::<U128>() {
+            Ok(unused_amount) => unused_amount.0,
+            Err(error) => {
+                log!("Mft transfer call fail: {}", error);
+                amount.0
+            }
+        };
+
+        if unused_amount > 0 {
+            let shares = self
+                .whitelisted_tokens
+                .get(&(contract_id.clone(), pool_id))
+                .unwrap_or_else(|| panic!("Contract or token not whitelisted"));
+
+            // rollback
+            self.whitelisted_tokens
+                .insert(&(contract_id, pool_id), &(shares + unused_amount));
         }
 
-        let shares = self
-            .whitelisted_tokens
-            .get(&(contract_id.clone(), pool_id))
-            .unwrap_or_else(|| panic!("Contract or token not whitelisted"));
-
-        // rollback
-        self.whitelisted_tokens
-            .insert(&(contract_id, pool_id), &(shares + amount.0));
-
-        PromiseOrValue::Value(amount)
+        PromiseOrValue::Value(unused_amount.into())
     }
 }

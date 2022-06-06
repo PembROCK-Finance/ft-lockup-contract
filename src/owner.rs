@@ -24,7 +24,7 @@ impl Contract {
         values.iter().for_each(|value| {
             let value = self.whitelisted_tokens.remove(value);
             match value {
-                Some(0) => panic!("Can't delete non zero shares"),
+                Some(value) if value > 0 => panic!("Can't delete non zero shares"),
                 _ => {}
             }
         });
