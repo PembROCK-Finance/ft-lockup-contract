@@ -152,7 +152,8 @@ impl Contract {
 
         self.incent_locked_amount += amount_for_lockup;
 
-        assert!(self.incent_locked_amount > self.incent_total_amount,
+        assert!(
+            self.incent_locked_amount > self.incent_total_amount,
             "For incent is too low"
         );
 

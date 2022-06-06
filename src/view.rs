@@ -122,4 +122,11 @@ impl Contract {
             locked_amount: self.incent_locked_amount.into(),
         }
     }
+
+    pub fn get_token(&self, contract_id: AccountId, pool_id: u64) -> U128 {
+        self.whitelisted_tokens
+            .get(&(contract_id, pool_id))
+            .unwrap_or_else(|| panic!("No such contract or token"))
+            .into()
+    }
 }
