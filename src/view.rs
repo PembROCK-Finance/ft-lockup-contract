@@ -1,4 +1,5 @@
 use crate::*;
+use std::collections::HashMap;
 use std::convert::TryInto;
 
 #[derive(Serialize)]
@@ -128,5 +129,18 @@ impl Contract {
             .get(&(contract_id, pool_id))
             .unwrap_or_else(|| panic!("No such contract or token"))
             .into()
+    }
+
+    pub fn get_tokens(
+        &self,
+        from_index: Option<u64>,
+        limit: Option<u64>,
+    ) -> HashMap<(AccountId, u64), U128> {
+        self.whitelisted_tokens
+            .iter()
+            .skip(from_index.unwrap_or_default() as usize)
+            .take(limit.unwrap_or_else(|| self.whitelisted_tokens.len()) as usize)
+            .map(|(key, value)| (key, U128(value)))
+            .collect()
     }
 }
