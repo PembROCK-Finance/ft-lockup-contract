@@ -87,6 +87,8 @@ impl MFTTokenReceiver for Contract {
         .then(ext_on_mft::on_mft_callback(
             sender_id,
             amount,
+            env::predecessor_account_id(),
+            pool_id,
             &env::current_account_id(),
             NO_DEPOSIT,
             callback_gas,
@@ -101,6 +103,8 @@ pub trait OnMftTransfer {
         &mut self,
         sender_id: AccountId,
         user_shares: U128,
+        predecessor_account_id: AccountId,
+        pool_id: u64,
         #[callback] pool_info: RefPoolInfo,
     ) -> PromiseOrValue<U128>;
 }
@@ -111,6 +115,8 @@ impl Contract {
         &mut self,
         sender_id: AccountId,
         user_shares: U128,
+        predecessor_account_id: AccountId,
+        pool_id: u64,
         #[callback] pool_info: RefPoolInfo,
     ) -> PromiseOrValue<U128> {
         let amount_index = pool_info
@@ -148,6 +154,15 @@ impl Contract {
             .for_incent
             .checked_sub(amount_for_lockup)
             .unwrap_or_else(|| panic!("For incent is too low"));
+
+        let shares = self
+            .whitelisted_tokens
+            .get(&(predecessor_account_id.clone(), pool_id))
+            .unwrap_or_else(|| panic!("Contract or token not whitelisted"));
+        self.whitelisted_tokens.insert(
+            &(predecessor_account_id, pool_id),
+            &(shares + user_shares.0),
+        );
 
         log!(
             "Created new lockup for {} with index {} with amount {}",
