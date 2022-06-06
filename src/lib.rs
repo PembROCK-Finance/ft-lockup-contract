@@ -71,6 +71,7 @@ pub struct Contract {
 
     pub for_incent: Balance,
     pub whitelisted_tokens: LookupSet<(AccountId, u64)>,
+    pub enabled: bool,
 }
 
 #[derive(BorshStorageKey, BorshSerialize)]
@@ -94,6 +95,7 @@ impl Contract {
             deposit_whitelist: deposit_whitelist_set,
             for_incent: 0,
             whitelisted_tokens: LookupSet::new(StorageKey::WhitelistedTokens),
+            enabled: true,
         }
     }
 
