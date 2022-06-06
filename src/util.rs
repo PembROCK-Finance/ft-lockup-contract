@@ -31,6 +31,22 @@ pub mod u128_dec_format {
     }
 }
 
+/// a value: "<contract_id>@<u64>"
+pub fn try_identify_contract_id_and_sub_token_id(
+    token_id: &String,
+) -> Result<(AccountId, u64), &'static str> {
+    let mut values = token_id.split('@');
+
+    let contract_id = values.next().ok_or("Missing contract id")?;
+    let pool_id = values
+        .next()
+        .ok_or("Missing pool id")?
+        .parse()
+        .map_err(|_| "Illegal pool id")?;
+
+    Ok((contract_id.to_owned(), pool_id))
+}
+
 /// a sub token would use a format ":<u64>"
 pub fn try_identify_sub_token_id(token_id: &String) -> Result<u64, &'static str> {
     if token_id.starts_with(":") {
