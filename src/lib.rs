@@ -70,7 +70,8 @@ pub struct Contract {
     /// Account IDs that can create new lockups.
     pub deposit_whitelist: UnorderedSet<AccountId>,
 
-    pub for_incent: Balance,
+    pub incent_total_amount: Balance,
+    pub incent_locked_amount: Balance,
     pub whitelisted_tokens: LookupMap<(AccountId, u64), Balance>,
     pub enabled: bool,
 }
@@ -94,7 +95,8 @@ impl Contract {
             account_lockups: LookupMap::new(StorageKey::AccountLockups),
             token_account_id: token_account_id.into(),
             deposit_whitelist: deposit_whitelist_set,
-            for_incent: 0,
+            incent_total_amount: 0,
+            incent_locked_amount: 0,
             whitelisted_tokens: LookupMap::new(StorageKey::WhitelistedTokens),
             enabled: true,
         }

@@ -47,6 +47,11 @@ impl From<Lockup> for LockupView {
     }
 }
 
+pub struct IncentInfo {
+    pub total_amount: U128,
+    pub locked_amount: U128,
+}
+
 #[near_bindgen]
 impl Contract {
     pub fn get_token_account_id(&self) -> ValidAccountId {
@@ -108,6 +113,13 @@ impl Contract {
         if let Some(termination_schedule) = termination_schedule {
             termination_schedule.assert_valid(total_balance.0);
             schedule.assert_valid_termination_schedule(&termination_schedule);
+        }
+    }
+
+    pub fn get_incent_amounts(&self) -> IncentInfo {
+        IncentInfo {
+            total_amount: self.incent_total_amount.into(),
+            locked_amount: self.incent_locked_amount.into(),
         }
     }
 }

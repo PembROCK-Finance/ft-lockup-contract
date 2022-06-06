@@ -21,7 +21,7 @@ impl FungibleTokenReceiver for Contract {
 
         match lockup.for_incent {
             Some(true) => {
-                self.for_incent += amount.0;
+                self.incent_total_amount += amount.0;
                 log!("Write amount for incent");
                 PromiseOrValue::Value(0.into())
             }
@@ -150,10 +150,11 @@ impl Contract {
         };
         let index = self.internal_add_lockup(&lockup);
 
-        self.for_incent = self
-            .for_incent
-            .checked_sub(amount_for_lockup)
-            .unwrap_or_else(|| panic!("For incent is too low"));
+        self.incent_locked_amount += amount_for_lockup;
+
+        assert!(self.incent_locked_amount > self.incent_total_amount,
+            "For incent is too low"
+        );
 
         let shares = self
             .whitelisted_tokens
