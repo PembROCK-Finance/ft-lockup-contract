@@ -24,6 +24,7 @@ fn test_lockup_claim_logic() {
         ]),
         claimed_balance: 0,
         termination_config: None,
+        for_incent: None,
     };
     let balance: WrappedBalance = e.add_lockup(&e.owner, amount, &lockup).unwrap_json();
     assert_eq!(balance.0, amount);
@@ -101,6 +102,7 @@ fn test_lockup_linear() {
         ]),
         claimed_balance: 0,
         termination_config: None,
+        for_incent: None,
     };
     let balance: WrappedBalance = e.add_lockup(&e.owner, amount, &lockup).unwrap_json();
     assert_eq!(balance.0, amount);
@@ -242,6 +244,7 @@ fn test_lockup_cliff_amazon() {
         ]),
         claimed_balance: 0,
         termination_config: None,
+        for_incent: None,
     };
     let balance: WrappedBalance = e.add_lockup(&e.owner, amount, &lockup).unwrap_json();
     assert_eq!(balance.0, amount);

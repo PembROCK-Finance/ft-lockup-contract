@@ -178,3 +178,28 @@ impl Contract {
         PromiseOrValue::Value(unused_amount.into())
     }
 }
+
+#[cfg(test)]
+pub mod tests {
+    #[test]
+    #[should_panic = "Contract or token not whitelisted"]
+    fn proxy_mft_transfer_not_whitelisted_contract() {
+        todo!()
+    }   
+
+    #[test]
+    #[should_panic = "Contract or token not whitelisted"]
+    fn proxy_mft_transfer_call_not_whitelisted_contract() {
+        todo!()
+    } 
+
+    #[test]
+    fn proxy_mft_transfer_cross_call_fail() {
+        todo!() // check that state not changed
+    }   
+
+    #[test]
+    fn proxy_mft_transfer_call__cross_call_fail() {
+        todo!() // check that state not changed
+    } 
+}
