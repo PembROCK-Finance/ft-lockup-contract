@@ -67,7 +67,7 @@ impl MFTTokenReceiver for Contract {
         token_id: String,
         sender_id: AccountId,
         amount: U128,
-        msg: String,
+        _msg: String,
     ) -> PromiseOrValue<U128> {
         // get_pool
         let pool_id = try_identify_sub_token_id(&token_id).unwrap_or_else(|err| panic!("{}", err));
