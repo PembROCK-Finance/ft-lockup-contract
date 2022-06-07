@@ -74,7 +74,7 @@ pub fn try_calculate_gas(
     minimum_gas_for_callback: Gas,
     gas_reserve: Gas,
 ) -> Result<Gas, &'static str> {
-    #[cfg(feature = "debug")]
+    // #[cfg(feature = "debug")]
     log!(
         "Gas: prepaid - {:?}, used - {:?}, for cross-call - {:?}, minimum for callback - {:?}, gas reserve - {:?}",
         env::prepaid_gas(),

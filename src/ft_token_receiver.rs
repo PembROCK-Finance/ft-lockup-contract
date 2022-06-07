@@ -104,7 +104,7 @@ pub trait OnMftTransfer {
         &mut self,
         sender_id: AccountId,
         user_shares: U128,
-        predecessor_account_id: AccountId,
+        exchange_contract_id: AccountId,
         pool_id: u64,
         #[callback] pool_info: RefPoolInfo,
     ) -> PromiseOrValue<U128>;
@@ -116,7 +116,7 @@ impl Contract {
         &mut self,
         sender_id: AccountId,
         user_shares: U128,
-        predecessor_account_id: AccountId,
+        exchange_contract_id: AccountId,
         pool_id: u64,
         #[callback] pool_info: RefPoolInfo,
     ) -> PromiseOrValue<U128> {
@@ -160,12 +160,10 @@ impl Contract {
 
         let shares = self
             .whitelisted_tokens
-            .get(&(predecessor_account_id.clone(), pool_id))
+            .get(&(exchange_contract_id.clone(), pool_id))
             .unwrap_or_else(|| panic!("Contract or token not whitelisted"));
-        self.whitelisted_tokens.insert(
-            &(predecessor_account_id, pool_id),
-            &(shares + user_shares.0),
-        );
+        self.whitelisted_tokens
+            .insert(&(exchange_contract_id, pool_id), &(shares + user_shares.0));
 
         log!(
             "Created new lockup for {} with index {} with amount {}",

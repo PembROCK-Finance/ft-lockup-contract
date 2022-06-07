@@ -47,8 +47,6 @@ impl Contract {
             NO_DEPOSIT,
             GAS_FOR_MFT_CALLBACK,
         ));
-
-        todo!()
     }
 
     #[payable]
