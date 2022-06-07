@@ -20,7 +20,6 @@ fn test_lockup_terminate_with_timestamp_in_future() {
             terminator_id: users.eve.valid_account_id(),
             vesting_schedule: Some(HashOrSchedule::Schedule(vesting_schedule)),
         }),
-        for_incent: None,
     };
 
     let balance: WrappedBalance = e.add_lockup(&e.owner, amount, &lockup).unwrap_json();

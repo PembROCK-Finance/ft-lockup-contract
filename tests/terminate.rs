@@ -27,7 +27,6 @@ fn test_lockup_terminate_no_vesting_schedule() {
             terminator_id: users.eve.valid_account_id(),
             vesting_schedule: None,
         }),
-        for_incent: None,
     };
 
     let balance: WrappedBalance = e.add_lockup(&e.owner, amount, &lockup).unwrap_json();
@@ -119,7 +118,6 @@ fn test_lockup_terminate_no_termination_config() {
         ]),
         claimed_balance: 0,
         termination_config: None,
-        for_incent: None,
     };
 
     let balance: WrappedBalance = e.add_lockup(&e.owner, amount, &lockup).unwrap_json();
@@ -163,7 +161,6 @@ fn test_lockup_terminate_wrong_terminator() {
             terminator_id: users.eve.valid_account_id(),
             vesting_schedule: None,
         }),
-        for_incent: None,
     };
 
     let balance: WrappedBalance = e.add_lockup(&e.owner, amount, &lockup).unwrap_json();
@@ -208,7 +205,6 @@ fn test_lockup_terminate_with_no_token_storage_deposit() {
             terminator_id: users.eve.valid_account_id(),
             vesting_schedule: None,
         }),
-        for_incent: None,
     };
 
     let balance: WrappedBalance = e.add_lockup(&e.owner, amount, &lockup).unwrap_json();
@@ -298,7 +294,6 @@ fn test_lockup_terminate_custom_vesting_hash() {
             terminator_id: users.eve.valid_account_id(),
             vesting_schedule: Some(HashOrSchedule::Hash(vesting_hash)),
         }),
-        for_incent: None,
     };
 
     let balance: WrappedBalance = e.add_lockup(&e.owner, amount, &lockup).unwrap_json();
@@ -371,7 +366,6 @@ fn test_lockup_terminate_custom_vesting_invalid_hash() {
             terminator_id: users.eve.valid_account_id(),
             vesting_schedule: Some(HashOrSchedule::Hash(vesting_hash)),
         }),
-        for_incent: None,
     };
 
     let balance: WrappedBalance = e.add_lockup(&e.owner, amount, &lockup).unwrap_json();
@@ -433,7 +427,6 @@ fn test_lockup_terminate_custom_vesting_incompatible_vesting_schedule_by_hash() 
             terminator_id: users.eve.valid_account_id(),
             vesting_schedule: Some(HashOrSchedule::Hash(incompatible_vesting_hash)),
         }),
-        for_incent: None,
     };
 
     let balance: WrappedBalance = e.add_lockup(&e.owner, amount, &lockup).unwrap_json();
@@ -474,7 +467,6 @@ fn test_lockup_terminate_custom_vesting_terminate_before_cliff() {
             terminator_id: users.eve.valid_account_id(),
             vesting_schedule: Some(HashOrSchedule::Schedule(vesting_schedule)),
         }),
-        for_incent: None,
     };
 
     let balance: WrappedBalance = e.add_lockup(&e.owner, amount, &lockup).unwrap_json();
@@ -537,7 +529,6 @@ fn test_lockup_terminate_custom_vesting_before_release() {
             terminator_id: users.eve.valid_account_id(),
             vesting_schedule: Some(HashOrSchedule::Schedule(vesting_schedule)),
         }),
-        for_incent: None,
     };
 
     let balance: WrappedBalance = e.add_lockup(&e.owner, amount, &lockup).unwrap_json();
@@ -622,7 +613,6 @@ fn test_lockup_terminate_custom_vesting_during_release() {
             terminator_id: users.eve.valid_account_id(),
             vesting_schedule: Some(HashOrSchedule::Schedule(vesting_schedule)),
         }),
-        for_incent: None,
     };
 
     let balance: WrappedBalance = e.add_lockup(&e.owner, amount, &lockup).unwrap_json();
@@ -708,7 +698,6 @@ fn test_lockup_terminate_custom_vesting_during_lockup_cliff() {
             terminator_id: users.eve.valid_account_id(),
             vesting_schedule: Some(HashOrSchedule::Schedule(vesting_schedule)),
         }),
-        for_incent: None,
     };
 
     let balance: WrappedBalance = e.add_lockup(&e.owner, amount, &lockup).unwrap_json();
@@ -794,7 +783,6 @@ fn test_lockup_terminate_custom_vesting_after_vesting_finished() {
             terminator_id: users.eve.valid_account_id(),
             vesting_schedule: Some(HashOrSchedule::Schedule(vesting_schedule)),
         }),
-        for_incent: None,
     };
 
     let balance: WrappedBalance = e.add_lockup(&e.owner, amount, &lockup).unwrap_json();

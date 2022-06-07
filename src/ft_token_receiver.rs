@@ -1,4 +1,5 @@
 use crate::ref_integration::{ext_exchange, RefPoolInfo};
+use crate::serde_json::Value;
 use crate::*;
 use near_sdk::{log, near_bindgen, AccountId, Gas, PromiseOrValue};
 use std::convert::TryFrom;
@@ -17,26 +18,24 @@ impl FungibleTokenReceiver for Contract {
             "Invalid token ID"
         );
         self.assert_deposit_whitelist(sender_id.as_ref());
-        let lockup: Lockup = serde_json::from_str(&msg).expect("Expected Lockup as msg");
 
-        match lockup.for_incent {
-            Some(true) => {
-                self.incent_total_amount += amount.0;
-                log!("Write amount for incent");
-                PromiseOrValue::Value(0.into())
-            }
-            _ => {
-                let amount = amount.into();
-                lockup.assert_new_valid(amount);
-                let index = self.internal_add_lockup(&lockup);
-                log!(
-                    "Created new lockup for {} with index {}",
-                    lockup.account_id.as_ref(),
-                    index,
-                );
-                PromiseOrValue::Value(0.into())
-            }
+        let value: Value = serde_json::from_str(&msg).expect("Invalid JSON in msg");
+        if let Some(Some(true)) = value.get("for_incent").map(|value| value.as_bool()) {
+            self.incent_total_amount += amount.0;
+            log!("Write amount for incent");
+            return PromiseOrValue::Value(0.into());
         }
+
+        let lockup: Lockup = serde_json::from_value(value).expect("Expected Lockup as msg");
+        let amount = amount.into();
+        lockup.assert_new_valid(amount);
+        let index = self.internal_add_lockup(&lockup);
+        log!(
+            "Created new lockup for {} with index {}",
+            lockup.account_id.as_ref(),
+            index,
+        );
+        PromiseOrValue::Value(0.into())
     }
 }
 
@@ -141,7 +140,6 @@ impl Contract {
             ]),
             claimed_balance: 0,
             termination_config: None,
-            for_incent: None,
         };
         let index = self.internal_add_lockup(&lockup);
 
