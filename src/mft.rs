@@ -1,8 +1,10 @@
 use crate::*;
 use near_sdk::{env, near_bindgen};
 
-pub const GAS_FOR_MFT_TRANSFER: Gas = 45_000_000_000_000;
-pub const GAS_FOR_MFT_CALLBACK: Gas = 50_000_000_000_000;
+pub const GAS_FOR_MFT_TRANSFER: Gas = 20_000_000_000_000;
+pub const GAS_FOR_MFT_TRANSFER_CALLBACK: Gas = 15_000_000_000_000;
+pub const GAS_FOR_MFT_TRANSFER_CALL: Gas = 70_000_000_000_000; // 25 for mft_on_transfer
+pub const GAS_FOR_MFT_TRANSFER_CALL_CALLBACK: Gas = 20_000_000_000_000;
 
 #[near_bindgen]
 impl Contract {
@@ -25,11 +27,6 @@ impl Contract {
         self.whitelisted_tokens
             .insert(&(contract_id.clone(), pool_id), &(shares - amount.0));
 
-        let gas_reserve = 50_000_000_000_000;
-        let callback_gas =
-            try_calculate_gas(GAS_FOR_MFT_TRANSFER, GAS_FOR_MFT_CALLBACK, gas_reserve)
-                .unwrap_or_else(|error| panic!("{}", error));
-
         ext_mft::mft_transfer(
             token_id,
             receiver_id,
@@ -37,7 +34,7 @@ impl Contract {
             memo,
             &contract_id,
             NO_DEPOSIT,
-            callback_gas,
+            GAS_FOR_MFT_TRANSFER,
         )
         .then(ext_mft::mft_transfer_callback(
             amount,
@@ -45,7 +42,7 @@ impl Contract {
             pool_id,
             &env::current_account_id(),
             NO_DEPOSIT,
-            GAS_FOR_MFT_CALLBACK,
+            GAS_FOR_MFT_TRANSFER_CALLBACK,
         ));
     }
 
@@ -69,10 +66,6 @@ impl Contract {
         self.whitelisted_tokens
             .insert(&(contract_id.clone(), pool_id), &(shares - amount.0));
 
-        let gas_reserve = 50_000_000_000_000;
-        let callback_gas = try_calculate_gas(GAS_FOR_MFT_TRANSFER, 50_000_000_000_000, gas_reserve)
-            .unwrap_or_else(|error| panic!("{}", error));
-
         ext_mft::mft_transfer_call(
             token_id,
             receiver_id,
@@ -81,7 +74,7 @@ impl Contract {
             msg,
             &contract_id,
             NO_DEPOSIT,
-            callback_gas,
+            GAS_FOR_MFT_TRANSFER_CALL,
         )
         .then(ext_mft::mft_transfer_call_callback(
             amount,
@@ -89,7 +82,7 @@ impl Contract {
             pool_id,
             &env::current_account_id(),
             NO_DEPOSIT,
-            GAS_FOR_MFT_CALLBACK,
+            GAS_FOR_MFT_TRANSFER_CALL_CALLBACK,
         ))
         .into()
     }
