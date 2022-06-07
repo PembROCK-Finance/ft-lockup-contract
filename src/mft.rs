@@ -182,23 +182,27 @@ impl Contract {
 #[cfg(test)]
 pub mod tests {
     #[test]
+    #[ignore]
     #[should_panic = "Contract or token not whitelisted"]
     fn proxy_mft_transfer_not_whitelisted_contract() {
         todo!()
     }
 
     #[test]
+    #[ignore]
     #[should_panic = "Contract or token not whitelisted"]
     fn proxy_mft_transfer_call_not_whitelisted_contract() {
         todo!()
     }
 
     #[test]
+    #[ignore]
     fn proxy_mft_transfer_cross_call_fail() {
         todo!() // check that state not changed
     }
 
     #[test]
+    #[ignore]
     fn proxy_mft_transfer_call_cross_call_fail() {
         todo!() // check that state not changed
     }
