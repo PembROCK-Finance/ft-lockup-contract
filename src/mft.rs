@@ -29,10 +29,12 @@ impl Contract {
         let shares = self
             .whitelisted_tokens
             .get(&(contract_id.clone(), pool_id))
-            .unwrap_or_else(|| panic!("Contract or token not whitelisted"));
+            .unwrap_or_else(|| panic!("Contract or token not whitelisted"))
+            .checked_sub(amount.0)
+            .unwrap_or_else(|| panic!("Not enough shares"));
 
         self.whitelisted_tokens
-            .insert(&(contract_id.clone(), pool_id), &(shares - amount.0));
+            .insert(&(contract_id.clone(), pool_id), &shares);
 
         ext_mft::mft_transfer(
             token_id,
@@ -75,10 +77,12 @@ impl Contract {
         let shares = self
             .whitelisted_tokens
             .get(&(contract_id.clone(), pool_id))
-            .unwrap_or_else(|| panic!("Contract or token not whitelisted"));
+            .unwrap_or_else(|| panic!("Contract or token not whitelisted"))
+            .checked_sub(amount.0)
+            .unwrap_or_else(|| panic!("Not enough shares"));
 
         self.whitelisted_tokens
-            .insert(&(contract_id.clone(), pool_id), &(shares - amount.0));
+            .insert(&(contract_id.clone(), pool_id), &shares);
 
         ext_mft::mft_transfer_call(
             token_id,
@@ -180,30 +184,212 @@ impl Contract {
 }
 
 #[cfg(test)]
-pub mod tests {
+mod tests {
+    use crate::*;
+    use near_sdk::json_types::{ValidAccountId, U128};
+    use near_sdk::test_utils::{accounts, testing_env_with_promise_results, VMContextBuilder};
+    use near_sdk::{testing_env, MockedBlockchain, PromiseResult};
+
+    pub const ONE_YOCTO: u128 = 1;
+
+    pub fn setup_contract() -> (VMContextBuilder, Contract) {
+        let mut context = VMContextBuilder::new();
+
+        testing_env!(context
+            .block_timestamp(0)
+            .predecessor_account_id(accounts(0))
+            .build());
+
+        (
+            context,
+            Contract::new(
+                ValidAccountId::try_from("token.pembrock.testnet").unwrap(),
+                vec![accounts(0)],
+            ),
+        )
+    }
+
+    // ---
+
     #[test]
-    #[ignore]
     #[should_panic = "Contract or token not whitelisted"]
     fn proxy_mft_transfer_not_whitelisted_contract() {
-        todo!()
+        let (mut context, mut contract) = setup_contract();
+
+        testing_env!(context
+            .attached_deposit(ONE_YOCTO)
+            .predecessor_account_id(accounts(0))
+            .build());
+        contract.proxy_mft_transfer("token.testnet@0".to_owned(), accounts(0), U128(1000), None);
     }
 
     #[test]
-    #[ignore]
     #[should_panic = "Contract or token not whitelisted"]
     fn proxy_mft_transfer_call_not_whitelisted_contract() {
-        todo!()
+        let (mut context, mut contract) = setup_contract();
+
+        testing_env!(context
+            .attached_deposit(ONE_YOCTO)
+            .predecessor_account_id(accounts(0))
+            .build());
+        contract.proxy_mft_transfer_call(
+            "token.testnet@0".to_owned(),
+            accounts(0),
+            U128(1000),
+            None,
+            "".to_owned(),
+        );
     }
 
     #[test]
-    #[ignore]
     fn proxy_mft_transfer_cross_call_fail() {
-        todo!() // check that state not changed
+        let (mut context, mut contract) = setup_contract();
+
+        let amount = U128(1000);
+        let contract_id = "token.testnet".to_owned();
+        let pool_id = 0;
+        let shares = 10_000;
+
+        contract
+            .whitelisted_tokens
+            .insert(&(contract_id.clone(), pool_id), &shares);
+        assert_eq!(
+            shares,
+            contract
+                .whitelisted_tokens
+                .get(&(contract_id.clone(), pool_id))
+                .unwrap(),
+            "Fail to init contract"
+        );
+
+        testing_env!(context.attached_deposit(ONE_YOCTO).build());
+        contract.proxy_mft_transfer(
+            format!("{}@{}", contract_id, pool_id),
+            accounts(0),
+            amount,
+            None,
+        );
+        testing_env_with_promise_results(
+            context.predecessor_account_id(accounts(0)).build(),
+            PromiseResult::Failed,
+        );
+        contract.mft_transfer_callback(amount, contract_id.clone(), pool_id);
+
+        assert_eq!(
+            shares,
+            contract
+                .whitelisted_tokens
+                .get(&(contract_id.clone(), pool_id))
+                .unwrap(),
+            "State not reverted on fail"
+        );
     }
 
     #[test]
-    #[ignore]
     fn proxy_mft_transfer_call_cross_call_fail() {
-        todo!() // check that state not changed
+        let (mut context, mut contract) = setup_contract();
+
+        let amount = U128(1000);
+        let contract_id = "token.testnet".to_owned();
+        let pool_id = 0;
+        let shares = 10_000;
+
+        contract
+            .whitelisted_tokens
+            .insert(&(contract_id.clone(), pool_id), &shares);
+        assert_eq!(
+            shares,
+            contract
+                .whitelisted_tokens
+                .get(&(contract_id.clone(), pool_id))
+                .unwrap(),
+            "Fail to init contract"
+        );
+
+        testing_env!(context.attached_deposit(ONE_YOCTO).build());
+        contract.proxy_mft_transfer_call(
+            format!("{}@{}", contract_id, pool_id),
+            accounts(0),
+            amount,
+            None,
+            "".to_owned(),
+        );
+        testing_env_with_promise_results(
+            context.predecessor_account_id(accounts(0)).build(),
+            PromiseResult::Failed,
+        );
+        contract.mft_transfer_call_callback(amount, contract_id.clone(), pool_id);
+
+        assert_eq!(
+            shares,
+            contract
+                .whitelisted_tokens
+                .get(&(contract_id.clone(), pool_id))
+                .unwrap(),
+            "State not reverted on fail"
+        );
+    }
+
+    #[test]
+    #[should_panic = "Not enough shares"]
+    fn proxy_mft_transfer_not_enough_shares() {
+        let (mut context, mut contract) = setup_contract();
+
+        let amount = U128(1000);
+        let contract_id = "token.testnet".to_owned();
+        let pool_id = 0;
+        let shares = 0;
+
+        contract
+            .whitelisted_tokens
+            .insert(&(contract_id.clone(), pool_id), &shares);
+        assert_eq!(
+            shares,
+            contract
+                .whitelisted_tokens
+                .get(&(contract_id.clone(), pool_id))
+                .unwrap(),
+            "Fail to init contract"
+        );
+
+        testing_env!(context.attached_deposit(ONE_YOCTO).build());
+        contract.proxy_mft_transfer(
+            format!("{}@{}", contract_id, pool_id),
+            accounts(0),
+            amount,
+            None,
+        );
+    }
+
+    #[test]
+    #[should_panic = "Not enough shares"]
+    fn proxy_mft_transfer_call_not_enough_shares() {
+        let (mut context, mut contract) = setup_contract();
+
+        let amount = U128(1000);
+        let contract_id = "token.testnet".to_owned();
+        let pool_id = 0;
+        let shares = 0;
+
+        contract
+            .whitelisted_tokens
+            .insert(&(contract_id.clone(), pool_id), &shares);
+        assert_eq!(
+            shares,
+            contract
+                .whitelisted_tokens
+                .get(&(contract_id.clone(), pool_id))
+                .unwrap(),
+            "Fail to init contract"
+        );
+
+        testing_env!(context.attached_deposit(ONE_YOCTO).build());
+        contract.proxy_mft_transfer_call(
+            format!("{}@{}", contract_id, pool_id),
+            accounts(0),
+            amount,
+            None,
+            "".to_owned(),
+        );
     }
 }
