@@ -1,4 +1,5 @@
 use crate::*;
+use std::collections::HashMap;
 use std::convert::TryInto;
 
 #[derive(Serialize)]
@@ -45,6 +46,13 @@ impl From<Lockup> for LockupView {
             timestamp,
         }
     }
+}
+
+#[derive(Serialize)]
+#[serde(crate = "near_sdk::serde")]
+pub struct IncentInfo {
+    pub total_amount: U128,
+    pub locked_amount: U128,
 }
 
 #[near_bindgen]
@@ -109,5 +117,32 @@ impl Contract {
             termination_schedule.assert_valid(total_balance.0);
             schedule.assert_valid_termination_schedule(&termination_schedule);
         }
+    }
+
+    pub fn get_incent_amounts(&self) -> IncentInfo {
+        IncentInfo {
+            total_amount: self.incent_total_amount.into(),
+            locked_amount: self.incent_locked_amount.into(),
+        }
+    }
+
+    pub fn get_token(&self, contract_id: AccountId, pool_id: u64) -> U128 {
+        self.whitelisted_tokens
+            .get(&(contract_id, pool_id))
+            .unwrap_or_else(|| panic!("No such contract or token"))
+            .into()
+    }
+
+    pub fn get_tokens(
+        &self,
+        from_index: Option<u64>,
+        limit: Option<u64>,
+    ) -> HashMap<(AccountId, u64), U128> {
+        self.whitelisted_tokens
+            .iter()
+            .skip(from_index.unwrap_or_default() as usize)
+            .take(limit.unwrap_or_else(|| self.whitelisted_tokens.len()) as usize)
+            .map(|(key, value)| (key, U128(value)))
+            .collect()
     }
 }

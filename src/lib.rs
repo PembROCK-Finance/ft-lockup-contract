@@ -2,7 +2,7 @@ use near_contract_standards::fungible_token::core_impl::ext_fungible_token;
 use near_contract_standards::fungible_token::receiver::FungibleTokenReceiver;
 use near_sdk::borsh::maybestd::collections::HashSet;
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::collections::{LookupMap, LookupSet, UnorderedSet, Vector};
+use near_sdk::collections::{LookupMap, UnorderedMap, UnorderedSet, Vector};
 use near_sdk::json_types::{Base58CryptoHash, ValidAccountId, WrappedBalance, U128};
 use near_sdk::serde::{Deserialize, Serialize};
 use near_sdk::{
@@ -15,6 +15,7 @@ pub mod callbacks;
 pub mod ft_token_receiver;
 pub mod internal;
 pub mod lockup;
+pub mod mft;
 pub mod owner;
 pub mod ref_integration;
 pub mod schedule;
@@ -69,8 +70,9 @@ pub struct Contract {
     /// Account IDs that can create new lockups.
     pub deposit_whitelist: UnorderedSet<AccountId>,
 
-    pub for_incent: Balance,
-    pub whitelisted_tokens: LookupSet<(AccountId, u64)>,
+    pub incent_total_amount: Balance,
+    pub incent_locked_amount: Balance,
+    pub whitelisted_tokens: UnorderedMap<(AccountId, u64), Balance>,
     pub enabled: bool,
 }
 
@@ -93,8 +95,9 @@ impl Contract {
             account_lockups: LookupMap::new(StorageKey::AccountLockups),
             token_account_id: token_account_id.into(),
             deposit_whitelist: deposit_whitelist_set,
-            for_incent: 0,
-            whitelisted_tokens: LookupSet::new(StorageKey::WhitelistedTokens),
+            incent_total_amount: 0,
+            incent_locked_amount: 0,
+            whitelisted_tokens: UnorderedMap::new(StorageKey::WhitelistedTokens),
             enabled: true,
         }
     }

@@ -21,7 +21,7 @@ impl FungibleTokenReceiver for Contract {
 
         match lockup.for_incent {
             Some(true) => {
-                self.for_incent += amount.0;
+                self.incent_total_amount += amount.0;
                 log!("Write amount for incent");
                 PromiseOrValue::Value(0.into())
             }
@@ -51,47 +51,44 @@ pub trait MFTTokenReceiver {
 }
 
 // TODO: move
-pub const GAS_FOR_GET_REF_POOL_INFO: Gas = 10_000_000_000_000;
+pub const GAS_FOR_GET_POOL: Gas = 10_000_000_000_000;
 pub const NO_DEPOSIT: Balance = 0;
+
+pub const GAS_FOR_MFT_ON_TRANSFER_ONLY: Gas = 20_000_000_000_000; // without cross call and callback gas
 
 /// seed token deposit
 #[near_bindgen]
 impl MFTTokenReceiver for Contract {
     /// Callback on receiving tokens by this contract.
+    ///  - total gas = GAS_FOR_MFT_ON_TRANSFER + gas for get_pool
     fn mft_on_transfer(
         &mut self,
         token_id: String,
         sender_id: AccountId,
         amount: U128,
-        msg: String,
+        _msg: String,
     ) -> PromiseOrValue<U128> {
         // get_pool
         let pool_id = try_identify_sub_token_id(&token_id).unwrap_or_else(|err| panic!("{}", err));
+        let exchange_contract_id = env::predecessor_account_id();
         assert!(
             self.whitelisted_tokens
-                .contains(&(env::predecessor_account_id(), pool_id)),
+                .get(&(exchange_contract_id.clone(), pool_id))
+                .is_some(),
             "Contract or token not whitelisted"
         );
 
-        let gas_reserve = 50_000_000_000_000;
-        let callback_gas =
-            try_calculate_gas(GAS_FOR_GET_REF_POOL_INFO, 50_000_000_000_000, gas_reserve)
-                .unwrap_or_else(|error| panic!("{}", error));
-
-        ext_exchange::get_pool(
-            pool_id,
-            &env::predecessor_account_id(),
-            NO_DEPOSIT,
-            GAS_FOR_GET_REF_POOL_INFO,
-        )
-        .then(ext_on_mft::on_mft_callback(
-            sender_id,
-            amount,
-            &env::current_account_id(),
-            NO_DEPOSIT,
-            callback_gas,
-        ))
-        .into()
+        ext_exchange::get_pool(pool_id, &exchange_contract_id, NO_DEPOSIT, GAS_FOR_GET_POOL)
+            .then(ext_on_mft::on_mft_callback(
+                sender_id,
+                amount,
+                exchange_contract_id,
+                pool_id,
+                &env::current_account_id(),
+                NO_DEPOSIT,
+                env::prepaid_gas() - GAS_FOR_MFT_ON_TRANSFER_ONLY - GAS_FOR_GET_POOL,
+            ))
+            .into()
     }
 }
 
@@ -101,6 +98,8 @@ pub trait OnMftTransfer {
         &mut self,
         sender_id: AccountId,
         user_shares: U128,
+        exchange_contract_id: AccountId,
+        pool_id: u64,
         #[callback] pool_info: RefPoolInfo,
     ) -> PromiseOrValue<U128>;
 }
@@ -111,6 +110,8 @@ impl Contract {
         &mut self,
         sender_id: AccountId,
         user_shares: U128,
+        exchange_contract_id: AccountId,
+        pool_id: u64,
         #[callback] pool_info: RefPoolInfo,
     ) -> PromiseOrValue<U128> {
         let amount_index = pool_info
@@ -144,10 +145,19 @@ impl Contract {
         };
         let index = self.internal_add_lockup(&lockup);
 
-        self.for_incent = self
-            .for_incent
-            .checked_sub(amount_for_lockup)
-            .unwrap_or_else(|| panic!("For incent is too low"));
+        self.incent_locked_amount += amount_for_lockup;
+
+        assert!(
+            self.incent_locked_amount > self.incent_total_amount,
+            "For incent is too low"
+        );
+
+        let shares = self
+            .whitelisted_tokens
+            .get(&(exchange_contract_id.clone(), pool_id))
+            .unwrap_or_else(|| panic!("Contract or token not whitelisted"));
+        self.whitelisted_tokens
+            .insert(&(exchange_contract_id, pool_id), &(shares + user_shares.0));
 
         log!(
             "Created new lockup for {} with index {} with amount {}",

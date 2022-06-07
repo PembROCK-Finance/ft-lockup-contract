@@ -10,7 +10,8 @@ impl Contract {
             "Not allowed"
         );
 
-        self.whitelisted_tokens.extend(values);
+        self.whitelisted_tokens
+            .extend(values.into_iter().map(|key| (key, 0)));
     }
 
     pub fn remove_from_whitelist(&mut self, values: Vec<(AccountId, u64)>) {
@@ -21,7 +22,11 @@ impl Contract {
         );
 
         values.iter().for_each(|value| {
-            self.whitelisted_tokens.remove(value);
+            let value = self.whitelisted_tokens.remove(value);
+            match value {
+                Some(value) if value > 0 => panic!("Can't delete non zero shares"),
+                _ => {}
+            }
         });
     }
 

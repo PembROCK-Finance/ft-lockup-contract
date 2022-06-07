@@ -1,5 +1,6 @@
 use crate::*;
-use near_sdk::env;
+use near_sdk::serde::de::DeserializeOwned;
+use near_sdk::{env, PromiseResult};
 use primitive_types::U256;
 
 pub(crate) fn nano_to_sec(timestamp: Timestamp) -> TimestampSec {
@@ -31,6 +32,22 @@ pub mod u128_dec_format {
     }
 }
 
+/// a value: "<contract_id>@<u64>"
+pub fn try_identify_contract_id_and_sub_token_id(
+    token_id: &String,
+) -> Result<(AccountId, u64), &'static str> {
+    let mut values = token_id.split('@');
+
+    let contract_id = values.next().ok_or("Missing contract id")?;
+    let pool_id = values
+        .next()
+        .ok_or("Missing pool id")?
+        .parse()
+        .map_err(|_| "Illegal pool id")?;
+
+    Ok((contract_id.to_owned(), pool_id))
+}
+
 /// a sub token would use a format ":<u64>"
 pub fn try_identify_sub_token_id(token_id: &String) -> Result<u64, &'static str> {
     if token_id.starts_with(":") {
@@ -57,7 +74,7 @@ pub fn try_calculate_gas(
     minimum_gas_for_callback: Gas,
     gas_reserve: Gas,
 ) -> Result<Gas, &'static str> {
-    #[cfg(feature = "debug")]
+    // #[cfg(feature = "debug")]
     log!(
         "Gas: prepaid - {:?}, used - {:?}, for cross-call - {:?}, minimum for callback - {:?}, gas reserve - {:?}",
         env::prepaid_gas(),
@@ -69,5 +86,22 @@ pub fn try_calculate_gas(
     match env::prepaid_gas().checked_sub(env::used_gas() + gas_reserve + gas_for_cross_call) {
         Some(gas_left) if gas_left >= minimum_gas_for_callback => Ok(gas_left),
         _ => Err("Not enough gas"),
+    }
+}
+
+pub fn get_promise_result<T: DeserializeOwned>() -> Result<T, &'static str> {
+    assert!(
+        env::promise_results_count() == 1,
+        "Promise should have exactly one result"
+    );
+    match env::promise_result(0) {
+        PromiseResult::Successful(bytes) => match near_sdk::serde_json::from_slice(&bytes) {
+            Ok(value) => Ok(value),
+            Err(error) => panic!("Wrong value received: {:?}", error),
+        },
+        PromiseResult::Failed => Err("Promise failed"),
+        // Current version of protocol never return `NotReady`
+        // https://docs.rs/near-sdk/4.0.0-pre.8/near_sdk/enum.PromiseResult.html#variant.NotReady
+        PromiseResult::NotReady => panic!("Promise result not ready"),
     }
 }
