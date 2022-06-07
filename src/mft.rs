@@ -16,6 +16,8 @@ impl Contract {
         amount: U128,
         memo: Option<String>,
     ) {
+        assert_one_yocto();
+
         let (contract_id, pool_id) = try_identify_contract_id_and_sub_token_id(&token_id)
             .unwrap_or_else(|error| panic!("{}", error));
 
@@ -55,6 +57,8 @@ impl Contract {
         memo: Option<String>,
         msg: String,
     ) -> PromiseOrValue<U128> {
+        assert_one_yocto();
+
         let (contract_id, pool_id) = try_identify_contract_id_and_sub_token_id(&token_id)
             .unwrap_or_else(|error| panic!("{}", error));
 
