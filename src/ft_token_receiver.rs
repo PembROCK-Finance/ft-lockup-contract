@@ -51,13 +51,17 @@ pub trait MFTTokenReceiver {
 }
 
 // TODO: move
-pub const GAS_FOR_GET_REF_POOL_INFO: Gas = 10_000_000_000_000;
+pub const GAS_FOR_GET_POOL: Gas = 10_000_000_000_000;
 pub const NO_DEPOSIT: Balance = 0;
+
+pub const GAS_FOR_MFT_ON_TRANSFER_ONLY: Gas = 20_000_000_000_000; // without cross call and callback gas
+
 
 /// seed token deposit
 #[near_bindgen]
 impl MFTTokenReceiver for Contract {
     /// Callback on receiving tokens by this contract.
+    ///  - total gas = GAS_FOR_MFT_ON_TRANSFER + gas for get_pool
     fn mft_on_transfer(
         &mut self,
         token_id: String,
@@ -67,32 +71,28 @@ impl MFTTokenReceiver for Contract {
     ) -> PromiseOrValue<U128> {
         // get_pool
         let pool_id = try_identify_sub_token_id(&token_id).unwrap_or_else(|err| panic!("{}", err));
+        let exchange_contract_id = env::predecessor_account_id();
         assert!(
             self.whitelisted_tokens
-                .get(&(env::predecessor_account_id(), pool_id))
+                .get(&(exchange_contract_id.clone(), pool_id))
                 .is_some(),
             "Contract or token not whitelisted"
         );
 
-        let gas_reserve = 50_000_000_000_000;
-        let callback_gas =
-            try_calculate_gas(GAS_FOR_GET_REF_POOL_INFO, 50_000_000_000_000, gas_reserve)
-                .unwrap_or_else(|error| panic!("{}", error));
-
         ext_exchange::get_pool(
             pool_id,
-            &env::predecessor_account_id(),
+            &exchange_contract_id,
             NO_DEPOSIT,
-            GAS_FOR_GET_REF_POOL_INFO,
+            GAS_FOR_GET_POOL,
         )
         .then(ext_on_mft::on_mft_callback(
             sender_id,
             amount,
-            env::predecessor_account_id(),
+            exchange_contract_id,
             pool_id,
             &env::current_account_id(),
             NO_DEPOSIT,
-            callback_gas,
+            env::prepaid_gas() - GAS_FOR_MFT_ON_TRANSFER_ONLY - GAS_FOR_GET_POOL,
         ))
         .into()
     }
