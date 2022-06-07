@@ -56,7 +56,6 @@ pub const NO_DEPOSIT: Balance = 0;
 
 pub const GAS_FOR_MFT_ON_TRANSFER_ONLY: Gas = 20_000_000_000_000; // without cross call and callback gas
 
-
 /// seed token deposit
 #[near_bindgen]
 impl MFTTokenReceiver for Contract {
@@ -79,22 +78,17 @@ impl MFTTokenReceiver for Contract {
             "Contract or token not whitelisted"
         );
 
-        ext_exchange::get_pool(
-            pool_id,
-            &exchange_contract_id,
-            NO_DEPOSIT,
-            GAS_FOR_GET_POOL,
-        )
-        .then(ext_on_mft::on_mft_callback(
-            sender_id,
-            amount,
-            exchange_contract_id,
-            pool_id,
-            &env::current_account_id(),
-            NO_DEPOSIT,
-            env::prepaid_gas() - GAS_FOR_MFT_ON_TRANSFER_ONLY - GAS_FOR_GET_POOL,
-        ))
-        .into()
+        ext_exchange::get_pool(pool_id, &exchange_contract_id, NO_DEPOSIT, GAS_FOR_GET_POOL)
+            .then(ext_on_mft::on_mft_callback(
+                sender_id,
+                amount,
+                exchange_contract_id,
+                pool_id,
+                &env::current_account_id(),
+                NO_DEPOSIT,
+                env::prepaid_gas() - GAS_FOR_MFT_ON_TRANSFER_ONLY - GAS_FOR_GET_POOL,
+            ))
+            .into()
     }
 }
 

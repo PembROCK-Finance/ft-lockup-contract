@@ -48,6 +48,8 @@ impl From<Lockup> for LockupView {
     }
 }
 
+#[derive(Serialize)]
+#[serde(crate = "near_sdk::serde")]
 pub struct IncentInfo {
     pub total_amount: U128,
     pub locked_amount: U128,
