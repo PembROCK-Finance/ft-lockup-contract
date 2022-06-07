@@ -5,7 +5,7 @@ authors = ["Eugene The Dream <ek@proximity.dev>"]
 edition = "2021"
 
 [lib]
-crate-type = ["cdylib", "rlib"]
+crate-type = ["cdylib"]
 
 [dependencies]
 near-sdk = "3.1.0"
@@ -23,3 +23,4 @@ lto = true
 debug = false
 panic = "abort"
 overflow-checks = true
+strip = true
