@@ -16,6 +16,13 @@ impl Contract {
         amount: U128,
         memo: Option<String>,
     ) {
+        assert_one_yocto();
+        assert!(
+            self.deposit_whitelist
+                .contains(&env::predecessor_account_id()),
+            "Not allowed"
+        );
+
         let (contract_id, pool_id) = try_identify_contract_id_and_sub_token_id(&token_id)
             .unwrap_or_else(|error| panic!("{}", error));
 
@@ -55,6 +62,13 @@ impl Contract {
         memo: Option<String>,
         msg: String,
     ) -> PromiseOrValue<U128> {
+        assert_one_yocto();
+        assert!(
+            self.deposit_whitelist
+                .contains(&env::predecessor_account_id()),
+            "Not allowed"
+        );
+
         let (contract_id, pool_id) = try_identify_contract_id_and_sub_token_id(&token_id)
             .unwrap_or_else(|error| panic!("{}", error));
 
@@ -162,5 +176,34 @@ impl Contract {
         }
 
         PromiseOrValue::Value(unused_amount.into())
+    }
+}
+
+#[cfg(test)]
+pub mod tests {
+    #[test]
+    #[ignore]
+    #[should_panic = "Contract or token not whitelisted"]
+    fn proxy_mft_transfer_not_whitelisted_contract() {
+        todo!()
+    }
+
+    #[test]
+    #[ignore]
+    #[should_panic = "Contract or token not whitelisted"]
+    fn proxy_mft_transfer_call_not_whitelisted_contract() {
+        todo!()
+    }
+
+    #[test]
+    #[ignore]
+    fn proxy_mft_transfer_cross_call_fail() {
+        todo!() // check that state not changed
+    }
+
+    #[test]
+    #[ignore]
+    fn proxy_mft_transfer_call_cross_call_fail() {
+        todo!() // check that state not changed
     }
 }

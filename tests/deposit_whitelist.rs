@@ -30,6 +30,7 @@ fn test_deposit_whitelist_get() {
         ]),
         claimed_balance: 0,
         termination_config: None,
+        for_incent: None,
     };
     let balance: WrappedBalance = e.add_lockup(&e.owner, amount, &lockup).unwrap_json();
     assert_eq!(balance.0, amount);

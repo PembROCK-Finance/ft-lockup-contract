@@ -117,7 +117,7 @@ impl Contract {
         let amount_index = pool_info
             .token_account_ids
             .iter()
-            .position(|r| r == &String::from("token.pembrock.testnet"))
+            .position(|r| r == &self.token_account_id)
             .unwrap_or_else(|| panic!("No token.pembrock.near in PoolInfo"));
         let amount = pool_info.amounts[amount_index].0;
 
