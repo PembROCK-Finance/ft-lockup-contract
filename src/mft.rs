@@ -316,7 +316,7 @@ impl Contract {
 
 #[cfg(test)]
 mod tests {
-    use crate::ft_token_receiver::MFTTokenReceiver;
+    use crate::mft::MFTTokenReceiver;
     use crate::ref_integration::RefPoolInfo;
     use crate::*;
     use near_sdk::json_types::{ValidAccountId, U128};
@@ -720,6 +720,9 @@ mod tests {
         assert_eq!(incent.0, contract.incent_total_amount,);
         assert_eq!(0, contract.incent_locked_amount,);
 
+        testing_env!(context
+            .predecessor_account_id(contract_id.clone().try_into().unwrap())
+            .build());
         contract.mft_on_transfer(
             format!(":{}", pool_id),
             sender_id.to_string(),
@@ -727,8 +730,8 @@ mod tests {
             "".to_owned(),
         );
         let ref_pool_info = RefPoolInfo {
-            token_account_ids: vec![],
-            amounts: vec![],
+            token_account_ids: vec![contract.token_account_id.clone()],
+            amounts: vec![tokens_amount],
             total_fee: 10,
             shares_total_supply: total_supply,
         };
@@ -752,11 +755,15 @@ mod tests {
 
         // TODO: check lockup
 
+        testing_env!(context
+            .predecessor_account_id(owner)
+            .attached_deposit(ONE_YOCTO)
+            .build());
         contract.proxy_mft_transfer(
             format!("{}@{}", contract_id, pool_id),
             accounts(2),
             U128(amount_for_lockup),
             None,
-        )
+        );        
     }
 }
