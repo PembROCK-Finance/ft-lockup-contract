@@ -749,11 +749,11 @@ mod tests {
         let amount_for_lockup =
             calculate_for_lockup(user_shares.0, tokens_amount.0, total_supply.0);
         assert_eq!(incent.0, contract.incent_total_amount,);
-        assert_eq!(amount_for_lockup, contract.incent_locked_amount,);
+        assert_eq!(amount_for_lockup, contract.incent_locked_amount);
         let lockup_index = 0; // First lockup
         let lockup = contract.lockups.get(lockup_index).unwrap();
 
-        // TODO: check lockup
+        assert_eq!(lockup.schedule.0[1].balance, amount_for_lockup);
 
         testing_env!(context
             .predecessor_account_id(owner)
@@ -762,8 +762,8 @@ mod tests {
         contract.proxy_mft_transfer(
             format!("{}@{}", contract_id, pool_id),
             accounts(2),
-            U128(amount_for_lockup),
+            user_shares,
             None,
-        );        
+        );
     }
 }
