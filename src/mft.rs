@@ -691,42 +691,53 @@ mod tests {
     fn full_lp_flow() {
         let (mut context, mut contract) = setup_contract();
 
-        let total_supply = U128(1000);
-        let tokens_amount = U128(10_000);
-        let incent = U128(1000000);
-        let contract_id = "exchange.testnet".to_owned();
-        let pool_id = 0;
-        let owner = accounts(0);
+        let owner_id = accounts(0);
         let sender_id = accounts(1);
-        let user_shares = U128(100);
+        let exchange_contract_id = accounts(2);
+        let pool_id = 0;
+        let token1_id: ValidAccountId = contract.token_account_id.clone().try_into().unwrap();
+        let token2_id = accounts(3);
+        let token1_amount = U128(15171821497385474264559);
+        let token2_amount = U128(229955497070989231115133755);
+        let shares_total_supply = U128(1965922955983163067462272);
+        let incent_total_amount = U128(1000000000000000000000000);
+        let user_shares = U128(611350868216586967105518);
 
-        testing_env!(context.predecessor_account_id(owner.clone()).build());
-        contract.add_to_whitelist(vec![(contract_id.clone(), pool_id)]);
+        let amount_for_lockup = 11323299786443666399999; // calculate_for_lockup(user_shares.0, token1_amount.0, shares_total_supply.0);
+
+        let ref_pool_info = RefPoolInfo {
+            token_account_ids: vec![token1_id.into(), token2_id.into()],
+            amounts: vec![token1_amount, token2_amount],
+            total_fee: 30,
+            shares_total_supply,
+        };
+
+        testing_env!(context.predecessor_account_id(owner_id.clone()).build());
+        contract.add_to_whitelist(vec![(exchange_contract_id.to_string(), pool_id)]);
         assert_eq!(
-            0,
             contract
                 .whitelisted_tokens
-                .get(&(contract_id.clone(), pool_id))
+                .get(&(exchange_contract_id.to_string(), pool_id))
                 .unwrap(),
-            "Fail to init contract"
+            0
         );
 
         testing_env!(context
             .predecessor_account_id(contract.token_account_id.clone().try_into().unwrap())
             .build());
         contract.ft_on_transfer(
-            owner.clone(),
-            incent,
+            owner_id.clone(),
+            incent_total_amount,
             json!({
                 "for_incent": true
             })
             .to_string(),
         );
-        assert_eq!(incent.0, contract.incent_total_amount,);
-        assert_eq!(0, contract.incent_locked_amount,);
+        assert_eq!(contract.incent_total_amount, incent_total_amount.0);
+        assert_eq!(contract.incent_locked_amount, 0);
 
         testing_env!(context
-            .predecessor_account_id(contract_id.clone().try_into().unwrap())
+            .predecessor_account_id(exchange_contract_id.clone().try_into().unwrap())
             .build());
         contract.mft_on_transfer(
             format!(":{}", pool_id),
@@ -734,12 +745,6 @@ mod tests {
             user_shares,
             "".to_owned(),
         );
-        let ref_pool_info = RefPoolInfo {
-            token_account_ids: vec![contract.token_account_id.clone()],
-            amounts: vec![tokens_amount],
-            total_fee: 10,
-            shares_total_supply: total_supply,
-        };
         testing_env_with_promise_results(
             context.build(),
             PromiseResult::Successful(serde_json::to_vec(&ref_pool_info).unwrap()),
@@ -747,25 +752,24 @@ mod tests {
         contract.on_mft_callback(
             sender_id.to_string(),
             user_shares,
-            contract_id.clone(),
+            exchange_contract_id.to_string(),
             pool_id,
             ref_pool_info,
         );
-        let amount_for_lockup =
-            calculate_for_lockup(user_shares.0, tokens_amount.0, total_supply.0);
-        assert_eq!(incent.0, contract.incent_total_amount,);
-        assert_eq!(amount_for_lockup, contract.incent_locked_amount);
+        
+        assert_eq!(contract.incent_total_amount, incent_total_amount.0);
+        assert_eq!(contract.incent_locked_amount, amount_for_lockup);
         let lockup_index = 0; // First lockup
         let lockup = contract.lockups.get(lockup_index).unwrap();
 
         assert_eq!(lockup.schedule.0[1].balance, amount_for_lockup);
 
         testing_env!(context
-            .predecessor_account_id(owner)
+            .predecessor_account_id(owner_id)
             .attached_deposit(ONE_YOCTO)
             .build());
         contract.proxy_mft_transfer(
-            format!("{}@{}", contract_id, pool_id),
+            format!("{}@{}", exchange_contract_id, pool_id),
             accounts(2),
             user_shares,
             None,
