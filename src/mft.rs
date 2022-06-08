@@ -351,7 +351,7 @@ mod tests {
         let (mut context, mut contract) = setup_contract();
 
         let amount = U128(1000);
-        let contract_id = "token.testnet".to_owned();
+        let contract_id = "exchange.testnet".to_owned();
         let pool_id = 0;
         let shares = 10_000;
 
@@ -384,7 +384,7 @@ mod tests {
         let (mut context, mut contract) = setup_contract();
 
         let amount = U128(1000);
-        let contract_id = "token.testnet".to_owned();
+        let contract_id = "exchange.testnet".to_owned();
         let pool_id = 0;
         let shares = 10_000;
 
@@ -422,7 +422,7 @@ mod tests {
             .attached_deposit(ONE_YOCTO)
             .predecessor_account_id(accounts(0))
             .build());
-        contract.proxy_mft_transfer("token.testnet@0".to_owned(), accounts(0), U128(1000), None);
+        contract.proxy_mft_transfer("exchange.testnet@0".to_owned(), accounts(0), U128(1000), None);
     }
 
     #[test]
@@ -435,7 +435,7 @@ mod tests {
             .predecessor_account_id(accounts(0))
             .build());
         contract.proxy_mft_transfer_call(
-            "token.testnet@0".to_owned(),
+            "exchange.testnet@0".to_owned(),
             accounts(0),
             U128(1000),
             None,
@@ -448,7 +448,7 @@ mod tests {
         let (mut context, mut contract) = setup_contract();
 
         let amount = U128(1000);
-        let contract_id = "token.testnet".to_owned();
+        let contract_id = "exchange.testnet".to_owned();
         let pool_id = 0;
         let shares = 10_000;
 
@@ -492,7 +492,7 @@ mod tests {
         let (mut context, mut contract) = setup_contract();
 
         let amount = U128(1000);
-        let contract_id = "token.testnet".to_owned();
+        let contract_id = "exchange.testnet".to_owned();
         let pool_id = 0;
         let shares = 10_000;
 
@@ -538,7 +538,7 @@ mod tests {
         let (mut context, mut contract) = setup_contract();
 
         let amount = U128(1000);
-        let contract_id = "token.testnet".to_owned();
+        let contract_id = "exchange.testnet".to_owned();
         let pool_id = 0;
         let shares = 0;
 
@@ -569,7 +569,7 @@ mod tests {
         let (mut context, mut contract) = setup_contract();
 
         let amount = U128(1000);
-        let contract_id = "token.testnet".to_owned();
+        let contract_id = "exchange.testnet".to_owned();
         let pool_id = 0;
         let shares = 0;
 
@@ -600,7 +600,7 @@ mod tests {
         let (mut context, mut contract) = setup_contract();
 
         let amount = U128(1000);
-        let contract_id = "token.testnet".to_owned();
+        let contract_id = "exchange.testnet".to_owned();
         let pool_id = 0;
         let shares = 10_000;
 
@@ -643,7 +643,7 @@ mod tests {
         let (mut context, mut contract) = setup_contract();
 
         let amount = U128(1000);
-        let contract_id = "token.testnet".to_owned();
+        let contract_id = "exchange.testnet".to_owned();
         let pool_id = 0;
         let shares = 10_000;
 
@@ -689,7 +689,7 @@ mod tests {
         let total_supply = U128(1000);
         let tokens_amount = U128(10_000);
         let incent = U128(1000);
-        let contract_id = "token.testnet".to_owned();
+        let contract_id = "exchange.testnet".to_owned();
         let pool_id = 0;
         let owner = accounts(0);
         let sender_id = accounts(1);
