@@ -212,6 +212,74 @@ mod tests {
     // ---
 
     #[test]
+    #[should_panic = "Not allowed"]
+    fn proxy_mft_transfer_can_call_only_owner() {
+        let (mut context, mut contract) = setup_contract();
+
+        let amount = U128(1000);
+        let contract_id = "token.testnet".to_owned();
+        let pool_id = 0;
+        let shares = 10_000;
+
+        contract
+            .whitelisted_tokens
+            .insert(&(contract_id.clone(), pool_id), &shares);
+        testing_env!(context.attached_deposit(ONE_YOCTO).build());
+        contract.proxy_mft_transfer(
+            format!("{}@{}", contract_id, pool_id),
+            accounts(0),
+            amount,
+            None,
+        );
+
+        testing_env!(context
+            .predecessor_account_id(accounts(1))
+            .attached_deposit(ONE_YOCTO)
+            .build());
+        contract.proxy_mft_transfer(
+            format!("{}@{}", contract_id, pool_id),
+            accounts(0),
+            amount,
+            None,
+        );
+    }
+
+    #[test]
+    #[should_panic = "Not allowed"]
+    fn proxy_mft_transfer_call_can_call_only_owner() {
+        let (mut context, mut contract) = setup_contract();
+
+        let amount = U128(1000);
+        let contract_id = "token.testnet".to_owned();
+        let pool_id = 0;
+        let shares = 10_000;
+
+        contract
+            .whitelisted_tokens
+            .insert(&(contract_id.clone(), pool_id), &shares);
+        testing_env!(context.attached_deposit(ONE_YOCTO).build());
+        contract.proxy_mft_transfer_call(
+            format!("{}@{}", contract_id, pool_id),
+            accounts(0),
+            amount,
+            None,
+            "".to_owned(),
+        );
+
+        testing_env!(context
+            .predecessor_account_id(accounts(1))
+            .attached_deposit(ONE_YOCTO)
+            .build());
+        contract.proxy_mft_transfer_call(
+            format!("{}@{}", contract_id, pool_id),
+            accounts(0),
+            amount,
+            None,
+            "".to_owned(),
+        );
+    }
+
+    #[test]
     #[should_panic = "Contract or token not whitelisted"]
     fn proxy_mft_transfer_not_whitelisted_contract() {
         let (mut context, mut contract) = setup_contract();
