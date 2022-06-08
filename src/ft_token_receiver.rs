@@ -67,6 +67,7 @@ impl MFTTokenReceiver for Contract {
         amount: U128,
         _msg: String,
     ) -> PromiseOrValue<U128> {
+        assert!(self.enabled, "Contract paused");
         // get_pool
         let pool_id = try_identify_sub_token_id(&token_id).unwrap_or_else(|err| panic!("{}", err));
         let exchange_contract_id = env::predecessor_account_id();
