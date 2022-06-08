@@ -956,6 +956,7 @@ dependencies = [
  "near-sdk",
  "near-sdk-sim",
  "primitive-types 0.7.3",
+ "serde_json",
  "uint 0.9.3",
 ]
 

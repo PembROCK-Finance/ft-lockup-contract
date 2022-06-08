@@ -185,10 +185,13 @@ impl Contract {
 
 #[cfg(test)]
 mod tests {
+    use crate::ft_token_receiver::MFTTokenReceiver;
+    use crate::ref_integration::RefPoolInfo;
     use crate::*;
     use near_sdk::json_types::{ValidAccountId, U128};
     use near_sdk::test_utils::{accounts, testing_env_with_promise_results, VMContextBuilder};
     use near_sdk::{testing_env, MockedBlockchain, PromiseResult};
+    use serde_json::json;
 
     pub const ONE_YOCTO: u128 = 1;
 
@@ -546,5 +549,83 @@ mod tests {
                 .get(&(contract_id.clone(), pool_id))
                 .unwrap(),
         );
+    }
+
+    #[test]
+    fn full_lp_flow() {
+        let (mut context, mut contract) = setup_contract();
+
+        let total_supply = U128(1000);
+        let tokens_amount = U128(10_000);
+        let incent = U128(1000);
+        let contract_id = "token.testnet".to_owned();
+        let pool_id = 0;
+        let owner = accounts(0);
+        let sender_id = accounts(1);
+        let user_shares = U128(100);
+
+        testing_env!(context.predecessor_account_id(owner.clone()).build());
+        contract.add_to_whitelist(vec![(contract_id.clone(), pool_id)]);
+        assert_eq!(
+            0,
+            contract
+                .whitelisted_tokens
+                .get(&(contract_id.clone(), pool_id))
+                .unwrap(),
+            "Fail to init contract"
+        );
+
+        testing_env!(context
+            .predecessor_account_id(contract.token_account_id.clone().try_into().unwrap())
+            .build());
+        contract.ft_on_transfer(
+            owner.clone(),
+            incent,
+            json!({
+                "for_incent": true
+            })
+            .to_string(),
+        );
+        assert_eq!(incent.0, contract.incent_total_amount,);
+        assert_eq!(0, contract.incent_locked_amount,);
+
+        contract.mft_on_transfer(
+            format!(":{}", pool_id),
+            sender_id.to_string(),
+            user_shares,
+            "".to_owned(),
+        );
+        let ref_pool_info = RefPoolInfo {
+            token_account_ids: vec![],
+            amounts: vec![],
+            total_fee: 10,
+            shares_total_supply: total_supply,
+        };
+        testing_env_with_promise_results(
+            context.predecessor_account_id(accounts(0)).build(),
+            PromiseResult::Successful(serde_json::to_vec(&ref_pool_info).unwrap()),
+        );
+        contract.on_mft_callback(
+            sender_id.to_string(),
+            user_shares,
+            contract_id.clone(),
+            pool_id,
+            ref_pool_info,
+        );
+        let amount_for_lockup =
+            calculate_for_lockup(user_shares.0, tokens_amount.0, total_supply.0);
+        assert_eq!(incent.0, contract.incent_total_amount,);
+        assert_eq!(amount_for_lockup, contract.incent_locked_amount,);
+        let lockup_index = 0; // First lockup
+        let lockup = contract.lockups.get(lockup_index).unwrap();
+
+        // TODO: check lockup
+
+        contract.proxy_mft_transfer(
+            format!("{}@{}", contract_id, pool_id),
+            accounts(2),
+            U128(amount_for_lockup),
+            None,
+        )
     }
 }
