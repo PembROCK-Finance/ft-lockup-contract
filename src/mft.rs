@@ -688,7 +688,7 @@ mod tests {
     }
 
     #[test]
-    fn full_lp_flow() {
+    fn full_lp_lockup_flow() {
         let (mut context, mut contract) = setup_contract();
 
         let owner_id = accounts(0);
