@@ -756,7 +756,7 @@ mod tests {
             pool_id,
             ref_pool_info,
         );
-        
+
         assert_eq!(contract.incent_total_amount, incent_total_amount.0);
         assert_eq!(contract.incent_locked_amount, amount_for_lockup);
         let lockup_index = 0; // First lockup
