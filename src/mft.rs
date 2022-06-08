@@ -210,7 +210,7 @@ impl MFTTokenReceiver for Contract {
         token_id: String,
         sender_id: AccountId,
         amount: U128,
-        _msg: String,
+        msg: String,
     ) -> PromiseOrValue<U128> {
         assert!(self.enabled, "Contract paused");
         // get_pool
