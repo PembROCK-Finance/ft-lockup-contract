@@ -190,11 +190,11 @@ pub trait MFTTokenReceiver {
     ) -> PromiseOrValue<U128>;
 }
 
-// TODO: move
 pub const GAS_FOR_GET_POOL: Gas = 10_000_000_000_000;
-pub const NO_DEPOSIT: Balance = 0;
-
 pub const GAS_FOR_MFT_ON_TRANSFER_ONLY: Gas = 20_000_000_000_000; // without cross call and callback gas
+
+pub const NO_DEPOSIT: Balance = 0;
+pub const LP_LOCKUP_DURATION: u32 = 86400 * 180; // add half a year
 
 /// seed token deposit
 #[near_bindgen]
@@ -276,7 +276,7 @@ impl Contract {
                     balance: 0,
                 },
                 Checkpoint {
-                    timestamp: timestamp + 86400 * 180, // add half a year
+                    timestamp: timestamp + LP_LOCKUP_DURATION,
                     balance: amount_for_lockup,
                 },
             ]),
