@@ -422,7 +422,12 @@ mod tests {
             .attached_deposit(ONE_YOCTO)
             .predecessor_account_id(accounts(0))
             .build());
-        contract.proxy_mft_transfer("exchange.testnet@0".to_owned(), accounts(0), U128(1000), None);
+        contract.proxy_mft_transfer(
+            "exchange.testnet@0".to_owned(),
+            accounts(0),
+            U128(1000),
+            None,
+        );
     }
 
     #[test]
@@ -688,7 +693,7 @@ mod tests {
 
         let total_supply = U128(1000);
         let tokens_amount = U128(10_000);
-        let incent = U128(1000);
+        let incent = U128(1000000);
         let contract_id = "exchange.testnet".to_owned();
         let pool_id = 0;
         let owner = accounts(0);
@@ -736,7 +741,7 @@ mod tests {
             shares_total_supply: total_supply,
         };
         testing_env_with_promise_results(
-            context.predecessor_account_id(accounts(0)).build(),
+            context.build(),
             PromiseResult::Successful(serde_json::to_vec(&ref_pool_info).unwrap()),
         );
         contract.on_mft_callback(
