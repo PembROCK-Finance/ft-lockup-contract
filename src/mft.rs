@@ -30,10 +30,12 @@ impl Contract {
         let shares = self
             .whitelisted_tokens
             .get(&(contract_id.clone(), pool_id))
-            .unwrap_or_else(|| panic!("Contract or token not whitelisted"));
+            .unwrap_or_else(|| panic!("Contract or token not whitelisted"))
+            .checked_sub(amount.0)
+            .unwrap_or_else(|| panic!("Not enough shares"));
 
         self.whitelisted_tokens
-            .insert(&(contract_id.clone(), pool_id), &(shares - amount.0));
+            .insert(&(contract_id.clone(), pool_id), &shares);
 
         ext_mft::mft_transfer(
             token_id,
@@ -76,10 +78,12 @@ impl Contract {
         let shares = self
             .whitelisted_tokens
             .get(&(contract_id.clone(), pool_id))
-            .unwrap_or_else(|| panic!("Contract or token not whitelisted"));
+            .unwrap_or_else(|| panic!("Contract or token not whitelisted"))
+            .checked_sub(amount.0)
+            .unwrap_or_else(|| panic!("Not enough shares"));
 
         self.whitelisted_tokens
-            .insert(&(contract_id.clone(), pool_id), &(shares - amount.0));
+            .insert(&(contract_id.clone(), pool_id), &shares);
 
         ext_mft::mft_transfer_call(
             token_id,
@@ -288,8 +292,8 @@ impl Contract {
         self.incent_locked_amount += amount_for_lockup;
 
         assert!(
-            self.incent_locked_amount > self.incent_total_amount,
-            "For incent is too low"
+            self.incent_locked_amount <= self.incent_total_amount,
+            "Incent total amount is too low"
         );
 
         let shares = self
@@ -311,30 +315,480 @@ impl Contract {
 }
 
 #[cfg(test)]
-pub mod tests {
+mod tests {
+    use crate::mft::MFTTokenReceiver;
+    use crate::ref_integration::RefPoolInfo;
+    use crate::*;
+    use near_sdk::json_types::{ValidAccountId, U128};
+    use near_sdk::test_utils::{accounts, testing_env_with_promise_results, VMContextBuilder};
+    use near_sdk::{testing_env, MockedBlockchain, PromiseResult};
+    use serde_json::json;
+
+    pub const ONE_YOCTO: u128 = 1;
+
+    pub fn setup_contract() -> (VMContextBuilder, Contract) {
+        let mut context = VMContextBuilder::new();
+
+        testing_env!(context
+            .block_timestamp(0)
+            .predecessor_account_id(accounts(0))
+            .build());
+
+        (
+            context,
+            Contract::new(
+                ValidAccountId::try_from("token.pembrock.testnet").unwrap(),
+                vec![accounts(0)],
+            ),
+        )
+    }
+
+    // ---
+
     #[test]
-    #[ignore]
+    #[should_panic = "Not allowed"]
+    fn proxy_mft_transfer_can_call_only_owner() {
+        let (mut context, mut contract) = setup_contract();
+
+        let amount = U128(1000);
+        let contract_id = "exchange.testnet".to_owned();
+        let pool_id = 0;
+        let shares = 10_000;
+
+        contract
+            .whitelisted_tokens
+            .insert(&(contract_id.clone(), pool_id), &shares);
+        testing_env!(context.attached_deposit(ONE_YOCTO).build());
+        contract.proxy_mft_transfer(
+            format!("{}@{}", contract_id, pool_id),
+            accounts(0),
+            amount,
+            None,
+        );
+
+        testing_env!(context
+            .predecessor_account_id(accounts(1))
+            .attached_deposit(ONE_YOCTO)
+            .build());
+        contract.proxy_mft_transfer(
+            format!("{}@{}", contract_id, pool_id),
+            accounts(0),
+            amount,
+            None,
+        );
+    }
+
+    #[test]
+    #[should_panic = "Not allowed"]
+    fn proxy_mft_transfer_call_can_call_only_owner() {
+        let (mut context, mut contract) = setup_contract();
+
+        let amount = U128(1000);
+        let contract_id = "exchange.testnet".to_owned();
+        let pool_id = 0;
+        let shares = 10_000;
+
+        contract
+            .whitelisted_tokens
+            .insert(&(contract_id.clone(), pool_id), &shares);
+        testing_env!(context.attached_deposit(ONE_YOCTO).build());
+        contract.proxy_mft_transfer_call(
+            format!("{}@{}", contract_id, pool_id),
+            accounts(0),
+            amount,
+            None,
+            "".to_owned(),
+        );
+
+        testing_env!(context
+            .predecessor_account_id(accounts(1))
+            .attached_deposit(ONE_YOCTO)
+            .build());
+        contract.proxy_mft_transfer_call(
+            format!("{}@{}", contract_id, pool_id),
+            accounts(0),
+            amount,
+            None,
+            "".to_owned(),
+        );
+    }
+
+    #[test]
     #[should_panic = "Contract or token not whitelisted"]
     fn proxy_mft_transfer_not_whitelisted_contract() {
-        todo!()
+        let (mut context, mut contract) = setup_contract();
+
+        testing_env!(context
+            .attached_deposit(ONE_YOCTO)
+            .predecessor_account_id(accounts(0))
+            .build());
+        contract.proxy_mft_transfer(
+            "exchange.testnet@0".to_owned(),
+            accounts(0),
+            U128(1000),
+            None,
+        );
     }
 
     #[test]
-    #[ignore]
     #[should_panic = "Contract or token not whitelisted"]
     fn proxy_mft_transfer_call_not_whitelisted_contract() {
-        todo!()
+        let (mut context, mut contract) = setup_contract();
+
+        testing_env!(context
+            .attached_deposit(ONE_YOCTO)
+            .predecessor_account_id(accounts(0))
+            .build());
+        contract.proxy_mft_transfer_call(
+            "exchange.testnet@0".to_owned(),
+            accounts(0),
+            U128(1000),
+            None,
+            "".to_owned(),
+        );
     }
 
     #[test]
-    #[ignore]
     fn proxy_mft_transfer_cross_call_fail() {
-        todo!() // check that state not changed
+        let (mut context, mut contract) = setup_contract();
+
+        let amount = U128(1000);
+        let contract_id = "exchange.testnet".to_owned();
+        let pool_id = 0;
+        let shares = 10_000;
+
+        contract
+            .whitelisted_tokens
+            .insert(&(contract_id.clone(), pool_id), &shares);
+        assert_eq!(
+            shares,
+            contract
+                .whitelisted_tokens
+                .get(&(contract_id.clone(), pool_id))
+                .unwrap(),
+            "Fail to init contract"
+        );
+
+        testing_env!(context.attached_deposit(ONE_YOCTO).build());
+        contract.proxy_mft_transfer(
+            format!("{}@{}", contract_id, pool_id),
+            accounts(0),
+            amount,
+            None,
+        );
+        testing_env_with_promise_results(
+            context.predecessor_account_id(accounts(0)).build(),
+            PromiseResult::Failed,
+        );
+        contract.mft_transfer_callback(amount, contract_id.clone(), pool_id);
+
+        assert_eq!(
+            shares,
+            contract
+                .whitelisted_tokens
+                .get(&(contract_id.clone(), pool_id))
+                .unwrap(),
+            "State not reverted on fail"
+        );
     }
 
     #[test]
-    #[ignore]
     fn proxy_mft_transfer_call_cross_call_fail() {
-        todo!() // check that state not changed
+        let (mut context, mut contract) = setup_contract();
+
+        let amount = U128(1000);
+        let contract_id = "exchange.testnet".to_owned();
+        let pool_id = 0;
+        let shares = 10_000;
+
+        contract
+            .whitelisted_tokens
+            .insert(&(contract_id.clone(), pool_id), &shares);
+        assert_eq!(
+            shares,
+            contract
+                .whitelisted_tokens
+                .get(&(contract_id.clone(), pool_id))
+                .unwrap(),
+            "Fail to init contract"
+        );
+
+        testing_env!(context.attached_deposit(ONE_YOCTO).build());
+        contract.proxy_mft_transfer_call(
+            format!("{}@{}", contract_id, pool_id),
+            accounts(0),
+            amount,
+            None,
+            "".to_owned(),
+        );
+        testing_env_with_promise_results(
+            context.predecessor_account_id(accounts(0)).build(),
+            PromiseResult::Failed,
+        );
+        contract.mft_transfer_call_callback(amount, contract_id.clone(), pool_id);
+
+        assert_eq!(
+            shares,
+            contract
+                .whitelisted_tokens
+                .get(&(contract_id.clone(), pool_id))
+                .unwrap(),
+            "State not reverted on fail"
+        );
+    }
+
+    #[test]
+    #[should_panic = "Not enough shares"]
+    fn proxy_mft_transfer_not_enough_shares() {
+        let (mut context, mut contract) = setup_contract();
+
+        let amount = U128(1000);
+        let contract_id = "exchange.testnet".to_owned();
+        let pool_id = 0;
+        let shares = 0;
+
+        contract
+            .whitelisted_tokens
+            .insert(&(contract_id.clone(), pool_id), &shares);
+        assert_eq!(
+            shares,
+            contract
+                .whitelisted_tokens
+                .get(&(contract_id.clone(), pool_id))
+                .unwrap(),
+            "Fail to init contract"
+        );
+
+        testing_env!(context.attached_deposit(ONE_YOCTO).build());
+        contract.proxy_mft_transfer(
+            format!("{}@{}", contract_id, pool_id),
+            accounts(0),
+            amount,
+            None,
+        );
+    }
+
+    #[test]
+    #[should_panic = "Not enough shares"]
+    fn proxy_mft_transfer_call_not_enough_shares() {
+        let (mut context, mut contract) = setup_contract();
+
+        let amount = U128(1000);
+        let contract_id = "exchange.testnet".to_owned();
+        let pool_id = 0;
+        let shares = 0;
+
+        contract
+            .whitelisted_tokens
+            .insert(&(contract_id.clone(), pool_id), &shares);
+        assert_eq!(
+            shares,
+            contract
+                .whitelisted_tokens
+                .get(&(contract_id.clone(), pool_id))
+                .unwrap(),
+            "Fail to init contract"
+        );
+
+        testing_env!(context.attached_deposit(ONE_YOCTO).build());
+        contract.proxy_mft_transfer_call(
+            format!("{}@{}", contract_id, pool_id),
+            accounts(0),
+            amount,
+            None,
+            "".to_owned(),
+        );
+    }
+
+    #[test]
+    fn proxy_mft_transfer_success() {
+        let (mut context, mut contract) = setup_contract();
+
+        let amount = U128(1000);
+        let contract_id = "exchange.testnet".to_owned();
+        let pool_id = 0;
+        let shares = 10_000;
+
+        contract
+            .whitelisted_tokens
+            .insert(&(contract_id.clone(), pool_id), &shares);
+        assert_eq!(
+            shares,
+            contract
+                .whitelisted_tokens
+                .get(&(contract_id.clone(), pool_id))
+                .unwrap(),
+            "Fail to init contract"
+        );
+
+        testing_env!(context.attached_deposit(ONE_YOCTO).build());
+        contract.proxy_mft_transfer(
+            format!("{}@{}", contract_id, pool_id),
+            accounts(0),
+            amount,
+            None,
+        );
+        testing_env_with_promise_results(
+            context.predecessor_account_id(accounts(0)).build(),
+            PromiseResult::Successful(vec![]),
+        );
+        contract.mft_transfer_callback(amount, contract_id.clone(), pool_id);
+
+        assert_eq!(
+            shares - amount.0,
+            contract
+                .whitelisted_tokens
+                .get(&(contract_id.clone(), pool_id))
+                .unwrap(),
+        );
+    }
+
+    #[test]
+    fn proxy_mft_transfer_call_success() {
+        let (mut context, mut contract) = setup_contract();
+
+        let amount = U128(1000);
+        let contract_id = "exchange.testnet".to_owned();
+        let pool_id = 0;
+        let shares = 10_000;
+
+        contract
+            .whitelisted_tokens
+            .insert(&(contract_id.clone(), pool_id), &shares);
+        assert_eq!(
+            shares,
+            contract
+                .whitelisted_tokens
+                .get(&(contract_id.clone(), pool_id))
+                .unwrap(),
+            "Fail to init contract"
+        );
+
+        testing_env!(context.attached_deposit(ONE_YOCTO).build());
+        contract.proxy_mft_transfer_call(
+            format!("{}@{}", contract_id, pool_id),
+            accounts(0),
+            amount,
+            None,
+            "".to_owned(),
+        );
+        testing_env_with_promise_results(
+            context.predecessor_account_id(accounts(0)).build(),
+            PromiseResult::Successful(serde_json::to_vec(&U128(0)).unwrap()),
+        );
+        contract.mft_transfer_call_callback(amount, contract_id.clone(), pool_id);
+
+        assert_eq!(
+            shares - amount.0,
+            contract
+                .whitelisted_tokens
+                .get(&(contract_id.clone(), pool_id))
+                .unwrap(),
+        );
+    }
+
+    #[test]
+    fn full_lp_lockup_flow() {
+        let (mut context, mut contract) = setup_contract();
+
+        let owner_id = accounts(0);
+        let sender_id = accounts(1);
+        let exchange_contract_id = accounts(2);
+        let pool_id = 0;
+        let token1_id: ValidAccountId = contract.token_account_id.clone().try_into().unwrap();
+        let token2_id = accounts(3);
+        let token1_amount = U128(15171821497385474264559);
+        let token2_amount = U128(229955497070989231115133755);
+        let shares_total_supply = U128(1965922955983163067462272);
+        let incent_total_amount = U128(1000000000000000000000000);
+        let user_shares = U128(611350868216586967105518);
+
+        let amount_for_lockup = 11323299786443666399999; // calculate_for_lockup(user_shares.0, token1_amount.0, shares_total_supply.0);
+
+        let ref_pool_info = RefPoolInfo {
+            token_account_ids: vec![token1_id.into(), token2_id.into()],
+            amounts: vec![token1_amount, token2_amount],
+            total_fee: 30,
+            shares_total_supply,
+        };
+
+        testing_env!(context.predecessor_account_id(owner_id.clone()).build());
+        contract.add_to_whitelist(vec![(exchange_contract_id.to_string(), pool_id)]);
+        assert_eq!(
+            contract
+                .whitelisted_tokens
+                .get(&(exchange_contract_id.to_string(), pool_id))
+                .unwrap(),
+            0
+        );
+
+        testing_env!(context
+            .predecessor_account_id(contract.token_account_id.clone().try_into().unwrap())
+            .build());
+        contract.ft_on_transfer(
+            owner_id.clone(),
+            incent_total_amount,
+            json!({
+                "for_incent": true
+            })
+            .to_string(),
+        );
+        assert_eq!(contract.incent_total_amount, incent_total_amount.0);
+        assert_eq!(contract.incent_locked_amount, 0);
+
+        testing_env!(context
+            .predecessor_account_id(exchange_contract_id.clone().try_into().unwrap())
+            .build());
+        contract.mft_on_transfer(
+            format!(":{}", pool_id),
+            sender_id.to_string(),
+            user_shares,
+            "".to_owned(),
+        );
+        testing_env_with_promise_results(
+            context.build(),
+            PromiseResult::Successful(serde_json::to_vec(&ref_pool_info).unwrap()),
+        );
+        contract.on_mft_callback(
+            sender_id.to_string(),
+            user_shares,
+            exchange_contract_id.to_string(),
+            pool_id,
+            ref_pool_info,
+        );
+
+        assert_eq!(
+            contract
+                .whitelisted_tokens
+                .get(&(exchange_contract_id.to_string(), pool_id))
+                .unwrap(),
+            user_shares.0
+        );
+
+        assert_eq!(contract.incent_total_amount, incent_total_amount.0);
+        assert_eq!(contract.incent_locked_amount, amount_for_lockup);
+        let lockup_index = 0; // First lockup
+        let lockup = contract.lockups.get(lockup_index).unwrap();
+
+        assert_eq!(lockup.schedule.0[1].balance, amount_for_lockup);
+
+        testing_env!(context
+            .predecessor_account_id(owner_id.clone())
+            .attached_deposit(ONE_YOCTO)
+            .build());
+        contract.proxy_mft_transfer(
+            format!("{}@{}", exchange_contract_id, pool_id),
+            owner_id,
+            user_shares,
+            None,
+        );
+
+        assert_eq!(
+            contract
+                .whitelisted_tokens
+                .get(&(exchange_contract_id.to_string(), pool_id))
+                .unwrap(),
+            0
+        );
     }
 }
