@@ -145,4 +145,8 @@ impl Contract {
             .map(|(key, value)| (key, U128(value)))
             .collect()
     }
+
+    pub fn get_state(&self) -> bool {
+        self.enabled
+    }
 }
