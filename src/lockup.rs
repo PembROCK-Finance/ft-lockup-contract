@@ -27,9 +27,6 @@ pub struct Lockup {
     pub claimed_balance: Balance,
     /// An optional configuration that allows vesting/lockup termination.
     pub termination_config: Option<TerminationConfig>,
-
-    // TODO: better name
-    pub for_incent: Option<bool>,
 }
 
 impl Lockup {
@@ -39,7 +36,6 @@ impl Lockup {
             schedule: Schedule::new_unlocked(total_balance),
             claimed_balance: 0,
             termination_config: None,
-            for_incent: None,
         }
     }
 
