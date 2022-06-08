@@ -757,6 +757,14 @@ mod tests {
             ref_pool_info,
         );
 
+        assert_eq!(
+            contract
+                .whitelisted_tokens
+                .get(&(exchange_contract_id.to_string(), pool_id))
+                .unwrap(),
+            user_shares.0
+        );
+
         assert_eq!(contract.incent_total_amount, incent_total_amount.0);
         assert_eq!(contract.incent_locked_amount, amount_for_lockup);
         let lockup_index = 0; // First lockup
@@ -765,14 +773,22 @@ mod tests {
         assert_eq!(lockup.schedule.0[1].balance, amount_for_lockup);
 
         testing_env!(context
-            .predecessor_account_id(owner_id)
+            .predecessor_account_id(owner_id.clone())
             .attached_deposit(ONE_YOCTO)
             .build());
         contract.proxy_mft_transfer(
             format!("{}@{}", exchange_contract_id, pool_id),
-            accounts(2),
+            owner_id,
             user_shares,
             None,
+        );
+
+        assert_eq!(
+            contract
+                .whitelisted_tokens
+                .get(&(exchange_contract_id.to_string(), pool_id))
+                .unwrap(),
+            0
         );
     }
 }
