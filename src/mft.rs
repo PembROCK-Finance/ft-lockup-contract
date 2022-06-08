@@ -460,4 +460,91 @@ mod tests {
             "".to_owned(),
         );
     }
+
+    #[test]
+    fn proxy_mft_transfer_success() {
+        let (mut context, mut contract) = setup_contract();
+
+        let amount = U128(1000);
+        let contract_id = "token.testnet".to_owned();
+        let pool_id = 0;
+        let shares = 10_000;
+
+        contract
+            .whitelisted_tokens
+            .insert(&(contract_id.clone(), pool_id), &shares);
+        assert_eq!(
+            shares,
+            contract
+                .whitelisted_tokens
+                .get(&(contract_id.clone(), pool_id))
+                .unwrap(),
+            "Fail to init contract"
+        );
+
+        testing_env!(context.attached_deposit(ONE_YOCTO).build());
+        contract.proxy_mft_transfer(
+            format!("{}@{}", contract_id, pool_id),
+            accounts(0),
+            amount,
+            None,
+        );
+        testing_env_with_promise_results(
+            context.predecessor_account_id(accounts(0)).build(),
+            PromiseResult::Successful(vec![]),
+        );
+        contract.mft_transfer_callback(amount, contract_id.clone(), pool_id);
+
+        assert_eq!(
+            shares - amount.0,
+            contract
+                .whitelisted_tokens
+                .get(&(contract_id.clone(), pool_id))
+                .unwrap(),
+        );
+    }
+
+    #[test]
+    fn proxy_mft_transfer_call_success() {
+        let (mut context, mut contract) = setup_contract();
+
+        let amount = U128(1000);
+        let contract_id = "token.testnet".to_owned();
+        let pool_id = 0;
+        let shares = 10_000;
+
+        contract
+            .whitelisted_tokens
+            .insert(&(contract_id.clone(), pool_id), &shares);
+        assert_eq!(
+            shares,
+            contract
+                .whitelisted_tokens
+                .get(&(contract_id.clone(), pool_id))
+                .unwrap(),
+            "Fail to init contract"
+        );
+
+        testing_env!(context.attached_deposit(ONE_YOCTO).build());
+        contract.proxy_mft_transfer_call(
+            format!("{}@{}", contract_id, pool_id),
+            accounts(0),
+            amount,
+            None,
+            "".to_owned(),
+        );
+        testing_env_with_promise_results(
+            context.predecessor_account_id(accounts(0)).build(),
+            PromiseResult::Successful(serde_json::to_vec(&U128(0)).unwrap()),
+        );
+        contract.mft_transfer_call_callback(amount, contract_id.clone(), pool_id);
+
+        assert_eq!(
+            shares - amount.0,
+            contract
+                .whitelisted_tokens
+                .get(&(contract_id.clone(), pool_id))
+                .unwrap(),
+        );
+    }
 }
