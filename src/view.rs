@@ -1,4 +1,6 @@
 use crate::*;
+use std::collections::HashMap;
+use std::convert::TryInto;
 
 #[derive(Serialize)]
 #[serde(crate = "near_sdk::serde")]
@@ -32,6 +34,7 @@ impl From<Lockup> for LockupView {
             schedule,
             claimed_balance,
             termination_config,
+            ..
         } = lockup;
         Self {
             account_id,
@@ -45,8 +48,19 @@ impl From<Lockup> for LockupView {
     }
 }
 
+#[derive(Serialize)]
+#[serde(crate = "near_sdk::serde")]
+pub struct IncentInfo {
+    pub total_amount: U128,
+    pub locked_amount: U128,
+}
+
 #[near_bindgen]
 impl Contract {
+    pub fn get_token_account_id(&self) -> ValidAccountId {
+        self.token_account_id.clone().try_into().unwrap()
+    }
+
     pub fn get_account_lockups(
         &self,
         account_id: ValidAccountId,
@@ -88,11 +102,12 @@ impl Contract {
         self.deposit_whitelist.to_vec()
     }
 
-    pub fn hash_schedule(schedule: Schedule) -> Base58CryptoHash {
+    pub fn hash_schedule(&self, schedule: Schedule) -> Base58CryptoHash {
         schedule.hash().into()
     }
 
     pub fn validate_schedule(
+        &self,
         schedule: Schedule,
         total_balance: WrappedBalance,
         termination_schedule: Option<Schedule>,
@@ -102,5 +117,34 @@ impl Contract {
             termination_schedule.assert_valid(total_balance.0);
             schedule.assert_valid_termination_schedule(&termination_schedule);
         }
+    }
+
+    pub fn get_incent_amounts(&self) -> IncentInfo {
+        IncentInfo {
+            total_amount: self.incent_total_amount.into(),
+            locked_amount: self.incent_locked_amount.into(),
+        }
+    }
+
+    pub fn get_token(&self, contract_id: AccountId, pool_id: u64) -> U128 {
+        self.whitelisted_tokens
+            .get(&(contract_id, pool_id))
+            .unwrap_or_else(|| panic!("No such contract or token"))
+            .into()
+    }
+
+    pub fn get_tokens(&self, from_index: Option<u64>, limit: Option<u64>) -> HashMap<String, U128> {
+        self.whitelisted_tokens
+            .iter()
+            .skip(from_index.unwrap_or_default() as usize)
+            .take(limit.unwrap_or_else(|| self.whitelisted_tokens.len()) as usize)
+            .map(|((contract_id, pool_id), value)| {
+                (format!("{}@{}", contract_id, pool_id), U128(value))
+            })
+            .collect()
+    }
+
+    pub fn get_state(&self) -> bool {
+        self.enabled
     }
 }

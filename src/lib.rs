@@ -2,7 +2,7 @@ use near_contract_standards::fungible_token::core_impl::ext_fungible_token;
 use near_contract_standards::fungible_token::receiver::FungibleTokenReceiver;
 use near_sdk::borsh::maybestd::collections::HashSet;
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::collections::{LookupMap, UnorderedSet, Vector};
+use near_sdk::collections::{LookupMap, UnorderedMap, UnorderedSet, Vector};
 use near_sdk::json_types::{Base58CryptoHash, ValidAccountId, WrappedBalance, U128};
 use near_sdk::serde::{Deserialize, Serialize};
 use near_sdk::{
@@ -15,6 +15,9 @@ pub mod callbacks;
 pub mod ft_token_receiver;
 pub mod internal;
 pub mod lockup;
+pub mod mft;
+pub mod owner;
+pub mod ref_integration;
 pub mod schedule;
 pub mod termination;
 pub mod util;
@@ -66,6 +69,11 @@ pub struct Contract {
 
     /// Account IDs that can create new lockups.
     pub deposit_whitelist: UnorderedSet<AccountId>,
+
+    pub incent_total_amount: Balance,
+    pub incent_locked_amount: Balance,
+    pub whitelisted_tokens: UnorderedMap<(AccountId, u64), Balance>,
+    pub enabled: bool,
 }
 
 #[derive(BorshStorageKey, BorshSerialize)]
@@ -73,6 +81,7 @@ pub(crate) enum StorageKey {
     Lockups,
     AccountLockups,
     DepositWhitelist,
+    WhitelistedTokens,
 }
 
 #[near_bindgen]
@@ -86,6 +95,10 @@ impl Contract {
             account_lockups: LookupMap::new(StorageKey::AccountLockups),
             token_account_id: token_account_id.into(),
             deposit_whitelist: deposit_whitelist_set,
+            incent_total_amount: 0,
+            incent_locked_amount: 0,
+            whitelisted_tokens: UnorderedMap::new(StorageKey::WhitelistedTokens),
+            enabled: true,
         }
     }
 
@@ -140,18 +153,40 @@ impl Contract {
         }
     }
 
+    #[payable]
     pub fn terminate(
         &mut self,
         lockup_index: LockupIndex,
         hashed_schedule: Option<Schedule>,
+        termination_timestamp: Option<TimestampSec>,
     ) -> PromiseOrValue<WrappedBalance> {
+        assert_one_yocto();
         let account_id = env::predecessor_account_id();
         let mut lockup = self
             .lockups
             .get(lockup_index as _)
             .expect("Lockup not found");
-        let unvested_balance = lockup.terminate(&account_id, hashed_schedule);
+        let current_timestamp = current_timestamp_sec();
+        let termination_timestamp = termination_timestamp.unwrap_or(current_timestamp);
+        assert!(
+            termination_timestamp >= current_timestamp,
+            "expected termination_timestamp >= now",
+        );
+        let unvested_balance =
+            lockup.terminate(&account_id, hashed_schedule, termination_timestamp);
         self.lockups.replace(lockup_index as _, &lockup);
+
+        // no need to store empty lockup
+        if lockup.schedule.total_balance() == 0 {
+            let lockup_account_id: AccountId = lockup.account_id.into();
+            let mut indices = self
+                .account_lockups
+                .get(&lockup_account_id)
+                .unwrap_or_default();
+            indices.remove(&lockup_index);
+            self.internal_save_account_lockups(&lockup_account_id, indices);
+        }
+
         if unvested_balance > 0 {
             ext_fungible_token::ft_transfer(
                 account_id.clone(),
