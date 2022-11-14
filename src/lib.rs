@@ -1,5 +1,6 @@
 use near_contract_standards::fungible_token::core_impl::ext_fungible_token;
 use near_contract_standards::fungible_token::receiver::FungibleTokenReceiver;
+use near_contract_standards::upgrade::Ownable;
 use near_sdk::borsh::maybestd::collections::HashSet;
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::collections::{LookupMap, UnorderedSet, Vector};
@@ -15,6 +16,7 @@ pub mod callbacks;
 pub mod ft_token_receiver;
 pub mod internal;
 pub mod lockup;
+pub mod migrate;
 pub mod schedule;
 pub mod termination;
 pub mod util;
@@ -66,6 +68,10 @@ pub struct Contract {
 
     /// Account IDs that can create new lockups.
     pub deposit_whitelist: UnorderedSet<AccountId>,
+    /// Account IDs that can't claim for some reason
+    pub blacklist: UnorderedSet<AccountId>,
+
+    pub owner_id: AccountId,
 }
 
 #[derive(BorshStorageKey, BorshSerialize)]
@@ -73,6 +79,7 @@ pub(crate) enum StorageKey {
     Lockups,
     AccountLockups,
     DepositWhitelist,
+    Blacklist,
 }
 
 #[near_bindgen]
@@ -86,13 +93,18 @@ impl Contract {
             account_lockups: LookupMap::new(StorageKey::AccountLockups),
             token_account_id: token_account_id.into(),
             deposit_whitelist: deposit_whitelist_set,
+            blacklist: UnorderedSet::new(StorageKey::Blacklist),
+            owner_id: env::predecessor_account_id(),
         }
     }
 
     pub fn claim(&mut self) -> PromiseOrValue<WrappedBalance> {
-        panic!("Claim temporarily disabled");
         let account_id = env::predecessor_account_id();
         let lockups = self.internal_get_account_lockups(&account_id);
+
+        if self.blacklist.contains(&account_id) {
+            panic!("Your wallet is facing issues with the tokens claim. To claim your tokens contact us via hq@pembrock.finance");
+        }
 
         if lockups.is_empty() {
             return PromiseOrValue::Value(0.into());
@@ -187,5 +199,19 @@ impl Contract {
         assert_one_yocto();
         self.assert_deposit_whitelist(&env::predecessor_account_id());
         self.deposit_whitelist.remove(account_id.as_ref());
+    }
+
+    #[payable]
+    pub fn add_to_blacklist(&mut self, account_id: ValidAccountId) {
+        assert_one_yocto();
+        self.assert_owner();
+        self.blacklist.insert(account_id.as_ref());
+    }
+
+    #[payable]
+    pub fn remove_to_blacklist(&mut self, account_id: ValidAccountId) {
+        assert_one_yocto();
+        self.assert_owner();
+        self.blacklist.remove(account_id.as_ref());
     }
 }
